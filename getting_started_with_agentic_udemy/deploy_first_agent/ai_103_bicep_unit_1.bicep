@@ -49,16 +49,16 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = 
 */
 resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01'= {
   parent: aiFoundry
-  name: 'course-gpt-5.4-mini'
+  name: 'gpt-4.1-mini'
   sku : {
     capacity: 1
     name: 'GlobalStandard'
   }
   properties: {
     model:{
-      name: 'gpt-5.4-mini'
+      name: 'gpt-4.1-mini'
       format: 'OpenAI'
-      version: '2025-08-07'
+      version: '2025-04-14'
     }
   }
 }

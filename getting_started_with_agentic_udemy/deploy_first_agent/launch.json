@@ -13,7 +13,7 @@
             "python": "tutorials/Scripts/python.exe",
           "env": {
             "AZURE_OPENAI_ENDPOINT": "https://sahaudemyagenticcourse.services.ai.azure.com/openai/v1",
-            "AZURE_OPENAI_DEPLOYMENT_NAME": "gpt-5.4-mini"
+            "AZURE_OPENAI_DEPLOYMENT_NAME": "gpt-4.1-mini"
           }
         },
     ]
