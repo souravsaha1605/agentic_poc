@@ -13,6 +13,7 @@ from data_access import as_date
 
 LOGIC_VERSION = "rca-review-5.2"
 FEATURE_VERSION = "weekly-5.2"
+INVENTORY_HISTORY_FRESH_DAYS = 14
 MIN_WEEKS = {
     "bias": 4,
     "trend": 8,
@@ -27,6 +28,10 @@ MIN_WEEKS = {
     "mix": 8,
     "quality": 1,
 }
+
+
+class NoDataError(ValueError):
+    """The requested scope has no observations; integrity errors use ValueError."""
 
 
 def number(value):
@@ -54,12 +59,24 @@ def rounded(value):
     return round(value, 2) if number(value) else None
 
 
-def weekly(rows):
+def shift_months(day, months):
+    """Shift a date by whole calendar months, clamping to month end."""
+    import calendar
+
+    index = day.year * 12 + day.month - 1 + months
+    year, month_index = divmod(index, 12)
+    month = month_index + 1
+    return day.replace(
+        year=year, month=month, day=min(day.day, calendar.monthrange(year, month)[1])
+    )
+
+
+def weekly(rows, start=None, end=None):
     groups = defaultdict(list)
     for r in rows:
         d = as_date(r["date"])
         groups[d - timedelta(days=d.weekday())].append(r)
-    return [
+    points = [
         {
             "date": str(d),
             "actual": sum(r["units_sold"] for r in batch),
@@ -67,6 +84,15 @@ def weekly(rows):
         }
         for d, batch in sorted(groups.items())
     ]
+    if start is not None:
+        points = [point for point in points if as_date(point["date"]) >= start]
+    if end is not None:
+        points = [
+            point
+            for point in points
+            if as_date(point["date"]) + timedelta(days=6) <= end
+        ]
+    return points
 
 
 class BusinessService:
@@ -79,14 +105,28 @@ class BusinessService:
         principal.authorize(plan.product_id, plan.region, plan.category)
         rows = self.provider.fetch(plan)
         if not rows:
-            raise ValueError("No data is available for this entity and period.")
+            raise NoDataError("No data is available for this entity and period.")
         for r in rows:
             principal.authorize(r["product_id"], r["region"], r["category"])
+        if plan.product_id == "*":
+            units = {r.get("unit_of_measure") for r in rows}
+            if None in units or "" in units or len(units) != 1:
+                raise ValueError(
+                    "Aggregate scope requires one certified unit of measure."
+                )
         dates = [as_date(r["date"]) for r in rows]
         end = plan.end or plan.as_of or min(max(dates), self.today)
-        start = plan.start or end - timedelta(weeks=plan.lookback_weeks) + timedelta(
-            days=1
-        )
+        if plan.start:
+            start = plan.start
+        elif plan.relative_period == "this_month":
+            start = end.replace(day=1)
+        elif plan.relative_period == "previous_month":
+            end = end.replace(day=1) - timedelta(days=1)
+            start = end.replace(day=1)
+        elif plan.lookback_months:
+            start = shift_months(end, -plan.lookback_months) + timedelta(days=1)
+        else:
+            start = end - timedelta(weeks=plan.lookback_weeks) + timedelta(days=1)
         # Inventory as-of must search all prior snapshots, including an old one.
         scoped = [
             r
@@ -95,12 +135,12 @@ class BusinessService:
             and (plan.tool == "get_inventory_context" or as_date(r["date"]) >= start)
         ]
         if not scoped:
-            raise ValueError("No observations at or before the requested cutoff.")
+            raise NoDataError("No observations at or before the requested cutoff.")
         limitations = []
         # Choose one forecast per target/store. Never duplicate an actual across vintages.
         by_target = defaultdict(list)
         for r in scoped:
-            by_target[(str(r["date"]), r["store_id"])].append(r)
+            by_target[(r["product_id"], str(r["date"]), r["store_id"])].append(r)
         selected = []
         for batch in by_target.values():
             if len({r.get("units_sold") for r in batch}) > 1:
@@ -140,7 +180,7 @@ class BusinessService:
             limitations.append(
                 "Returns present: WMAPE denominator uses absolute actual units; bias uses signed net actual."
             )
-        points = weekly(valid)
+        points = weekly(valid, start, end)
         gaps = any(
             (as_date(b["date"]) - as_date(a["date"])).days > 7
             for a, b in zip(points, points[1:])
@@ -219,8 +259,22 @@ class BusinessService:
                 "gaps": gaps,
             },
         }
+        if plan.product_id == "*":
+            base["aggregation"] = {
+                "included_products": sorted({r["product_id"] for r in selected}),
+                "unit_of_measure": next(iter({r["unit_of_measure"] for r in selected})),
+                "definition": "Sum across the listed products only after source certification confirms one homogeneous unit of measure.",
+            }
         if plan.tool == "get_inventory_context":
-            base.update(self.inventory(selected, plan.as_of or plan.end or self.today))
+            cutoff = as_date(source["requested_end"])
+            period_start = as_date(source["requested_start"])
+            base.update(self.inventory(selected, cutoff))
+            base["inventory_trend"] = self.inventory_trend(
+                selected, period_start, cutoff
+            )
+            base["forecast_error_inventory_exposure"] = self.inventory_exposure(
+                [row for row in rows if period_start <= as_date(row["date"]) <= cutoff]
+            )
             base["period"] = {
                 "start": source["requested_start"],
                 "end": source["requested_end"],
@@ -291,7 +345,22 @@ class BusinessService:
             raise ValueError(
                 "Scenario comparisons require authorized persisted state, not source rows."
             )
-        if plan.comparison_region or plan.comparison_start:
+        comparison_start = plan.comparison_start
+        comparison_end = plan.comparison_end
+        if plan.compare_previous_period and not comparison_start:
+            current_start = as_date(source["requested_start"])
+            current_end = as_date(source["requested_end"])
+            comparison_end = current_start - timedelta(days=1)
+            if plan.lookback_months:
+                comparison_start = shift_months(
+                    comparison_end, -plan.lookback_months
+                ) + timedelta(days=1)
+            elif plan.relative_period:
+                comparison_start = comparison_end.replace(day=1)
+            else:
+                days = (current_end - current_start).days + 1
+                comparison_start = comparison_end - timedelta(days=days - 1)
+        if plan.comparison_region or comparison_start:
             # Explicit comparison scopes are independently authorized. Recursive
             # requests clear comparison fields, so this is at most two bounded
             # additional deterministic reads, never a model/tool loop.
@@ -301,8 +370,8 @@ class BusinessService:
                 (
                     "period",
                     {
-                        "start": plan.comparison_start,
-                        "end": plan.comparison_end,
+                        "start": comparison_start,
+                        "end": comparison_end,
                         "as_of": None,
                         "fiscal_period": None,
                     },
@@ -310,7 +379,7 @@ class BusinessService:
             ]:
                 if label == "region" and not plan.comparison_region:
                     continue
-                if label == "period" and not plan.comparison_start:
+                if label == "period" and not comparison_start:
                     continue
                 other = plan.model_copy(
                     update={
@@ -318,28 +387,72 @@ class BusinessService:
                         "comparison_region": None,
                         "comparison_start": None,
                         "comparison_end": None,
+                        "compare_previous_period": False,
+                        "relative_period": None,
+                        "lookback_months": None,
                     }
                 )
-                reference = self.execute(other, principal)
+                try:
+                    reference = self.execute(other, principal)
+                except NoDataError:
+                    comparisons[label] = {
+                        "period": {
+                            "start": str(comparison_start),
+                            "end": str(comparison_end),
+                        },
+                        "availability": "UNAVAILABLE",
+                        "limitation": "No validated observations exist for the comparison scope.",
+                    }
+                    continue
                 comparisons[label] = {
                     "entity": reference["entity"],
                     "period": reference["period"],
                     "metrics": reference.get("metrics"),
                     "net_revenue": reference.get("net_revenue"),
+                    "inventory": reference.get("inventory"),
                     "provenance": reference["provenance"],
                 }
-                if base.get("metrics") and reference.get("metrics"):
-                    comparisons[label]["accuracy_gap_pp"] = (
-                        rounded(
-                            base["metrics"]["accuracy_pct"]
-                            - reference["metrics"]["accuracy_pct"]
-                        )
-                        if number(base["metrics"].get("accuracy_pct"))
-                        and number(reference["metrics"].get("accuracy_pct"))
-                        else None
-                    )
+                comparisons[label]["deltas"] = self.comparison_deltas(base, reference)
+                if "accuracy_gap_pp" in comparisons[label]["deltas"]:
+                    comparisons[label]["accuracy_gap_pp"] = comparisons[label][
+                        "deltas"
+                    ]["accuracy_gap_pp"]
             base["comparisons"] = comparisons
         return base
+
+    @staticmethod
+    def comparison_deltas(current, reference):
+        """Current minus reference, with unit and percentage-point conventions."""
+        deltas = {
+            "definition": "Current minus reference; percent changes divide by the absolute reference value; accuracy, WMAPE and bias use percentage points. Zero reference values have no percent change."
+        }
+        current_metrics = current.get("metrics") or {}
+        reference_metrics = reference.get("metrics") or {}
+        for name in ("actual", "forecast", "signed_error", "absolute_error"):
+            current_value = current_metrics.get(name)
+            reference_value = reference_metrics.get(name)
+            if number(current_value) and number(reference_value):
+                deltas[name + "_units"] = rounded(current_value - reference_value)
+                deltas[name + "_pct"] = rounded(change(reference_value, current_value))
+        for name, output in (
+            ("wmape_pct", "wmape_gap_pp"),
+            ("accuracy_pct", "accuracy_gap_pp"),
+            ("bias_pct", "bias_gap_pp"),
+        ):
+            current_value = current_metrics.get(name)
+            reference_value = reference_metrics.get(name)
+            if number(current_value) and number(reference_value):
+                deltas[output] = rounded(current_value - reference_value)
+        for name, unit in (("net_revenue", "currency"), ("inventory", "units")):
+            current_value = current.get(name)
+            reference_value = reference.get(name)
+            if number(current_value) and number(reference_value):
+                deltas[name + "_change"] = rounded(current_value - reference_value)
+                deltas[name + "_change_pct"] = rounded(
+                    change(reference_value, current_value)
+                )
+                deltas[name + "_unit"] = unit
+        return deltas
 
     @staticmethod
     def forecast(rows):
@@ -365,7 +478,7 @@ class BusinessService:
         latest = {}
         for r in rows:
             if as_date(r["date"]) <= cutoff:
-                latest[r["store_id"]] = r
+                latest[(r["product_id"], r["store_id"])] = r
         snapshots = list(latest.values())
         if not snapshots or any(
             not number(r.get("inventory_level")) for r in snapshots
@@ -395,6 +508,112 @@ class BusinessService:
             "stockout_snapshots": sum(r["inventory_level"] <= 0 for r in snapshots),
             "stockout_days": None,
             "definition": "Latest known balance per store at/before cutoff; snapshots do not measure stockout days.",
+        }
+
+    @staticmethod
+    def inventory_trend(rows, start, end):
+        """Historical balances carried forward for at most the freshness limit."""
+        ordered = sorted(rows, key=lambda row: as_date(row["date"]))
+        entities = sorted({(row["product_id"], row["store_id"]) for row in ordered})
+        dates = sorted(
+            {
+                as_date(row["date"])
+                for row in ordered
+                if start <= as_date(row["date"]) <= end
+            }
+        )
+        trend = []
+        for day in dates:
+            values = []
+            stale = 0
+            for entity in entities:
+                candidates = [
+                    row
+                    for row in ordered
+                    if (row["product_id"], row["store_id"]) == entity
+                    and as_date(row["date"]) <= day
+                    and number(row.get("inventory_level"))
+                ]
+                if not candidates:
+                    continue
+                latest = candidates[-1]
+                if (day - as_date(latest["date"])).days > INVENTORY_HISTORY_FRESH_DAYS:
+                    stale += 1
+                    continue
+                values.append(latest)
+            available = len(values)
+            expected = len(entities)
+            trend.append(
+                {
+                    "date": str(day),
+                    "inventory": rounded(sum(r["inventory_level"] for r in values))
+                    if values
+                    else None,
+                    "stockout_snapshots": sum(
+                        r["inventory_level"] <= 0 for r in values
+                    ),
+                    "available_entities": available,
+                    "expected_entities": expected,
+                    "stale_entities": stale,
+                    "availability": "AVAILABLE"
+                    if available == expected
+                    else "PARTIAL"
+                    if available
+                    else "UNAVAILABLE",
+                }
+            )
+        complete = [point for point in trend if point["inventory"] is not None]
+        return {
+            "points": trend,
+            "change_pct": rounded(change(trend[0]["inventory"], trend[-1]["inventory"]))
+            if len(trend) >= 2
+            and trend[0]["inventory"] is not None
+            and trend[-1]["inventory"] is not None
+            else None,
+            "availability": "AVAILABLE"
+            if trend
+            and len(complete) == len(trend)
+            and all(p["availability"] == "AVAILABLE" for p in trend)
+            else "PARTIAL"
+            if complete
+            else "UNAVAILABLE",
+            "freshness_limit_days": INVENTORY_HISTORY_FRESH_DAYS,
+            "definition": "At each observation date, sum the latest product/store balance no more than 14 days old. Dates are never added together; missing or stale entities make that point partial.",
+        }
+
+    @staticmethod
+    def inventory_exposure(rows):
+        """Describe forecast error observed alongside available or zero inventory."""
+        usable = [r for r in rows if number(r.get("inventory_level"))]
+        missing = len(rows) - len(usable)
+        if not usable:
+            return {
+                "availability": "UNAVAILABLE",
+                "usable_observations": 0,
+                "missing_observations": missing,
+                "absolute_error_units_at_stockout": None,
+                "signed_error_units_at_stockout": None,
+                "absolute_error_units_with_inventory": None,
+                "stockout_snapshots": None,
+                "definition": "Inventory evidence is unavailable; forecast-error exposure cannot be calculated.",
+            }
+        low = [r for r in usable if r["inventory_level"] <= 0]
+        available = [r for r in usable if r["inventory_level"] > 0]
+
+        def absolute_error(batch):
+            return sum(abs(r["demand_forecast"] - r["units_sold"]) for r in batch)
+
+        return {
+            "availability": "PARTIAL" if missing else "AVAILABLE",
+            "usable_observations": len(usable),
+            "missing_observations": missing,
+            "absolute_error_units_at_stockout": rounded(absolute_error(low)),
+            "signed_error_units_at_stockout": rounded(
+                sum(r["demand_forecast"] - r["units_sold"] for r in low)
+            ),
+            "absolute_error_units_with_inventory": rounded(absolute_error(available)),
+            "stockout_snapshots": len(low),
+            "definition": "Forecast-minus-actual error grouped by contemporaneous inventory snapshot; association only, not lost demand or causality.",
         }
 
     @staticmethod
@@ -470,6 +689,35 @@ class BusinessService:
         ]
         nonzero = [v for v in values if v != 0]
         avg = mean(values)
+        rolling = []
+        for index in range(3, len(points)):
+            window = points[index - 3 : index + 1]
+            if any(
+                (as_date(right["date"]) - as_date(left["date"])).days != 7
+                for left, right in zip(window, window[1:])
+            ):
+                continue
+            actual = mean([point["actual"] for point in window])
+            forecast = mean([point["forecast"] for point in window])
+            denominator = sum(abs(point["actual"]) for point in window)
+            wmape = (
+                sum(abs(point["forecast"] - point["actual"]) for point in window)
+                / denominator
+                * 100
+                if denominator
+                else None
+            )
+            rolling.append(
+                {
+                    "week": points[index]["date"],
+                    "window_start": window[0]["date"],
+                    "actual_4w_avg": rounded(actual),
+                    "forecast_4w_avg": rounded(forecast),
+                    "accuracy_4w_pct": rounded(100 - wmape)
+                    if wmape is not None
+                    else None,
+                }
+            )
         return {
             "status": "AVAILABLE",
             "level_shift_pct": rounded(shift),
@@ -491,6 +739,8 @@ class BusinessService:
                 for v in values[half:]
             ),
             "intermittency_ratio": rounded(1 - len(nonzero) / len(values)),
+            "rolling_4_week": rolling[-12:],
+            "rolling_definition": "Four consecutive completed weekly aggregates ending on each listed week; accuracy is 100 minus four-week WMAPE. Windows spanning missing weeks are omitted.",
         }
 
     def hypothesis(self, kind, rows, points, plan, source, gaps, partial):

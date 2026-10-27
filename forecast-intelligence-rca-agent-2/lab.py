@@ -17,6 +17,35 @@ from data_access import RecordsProvider
 DATASET_VERSION = "brd-lab-5.2"
 SEED = 42
 END = date(2026, 9, 27)
+# A fixture row is unique at the forecast-vintage grain. Initialization uses this
+# key to add absent lab rows without replacing an existing business observation.
+FIXTURE_GRAIN = (
+    "product_id",
+    "store_id",
+    "region",
+    "date",
+    "forecast_generated_date",
+)
+
+# These are the original BRD examples plus the explicitly added review-5 lab
+# capabilities. Keeping the contract outside ``certify`` lets initialization
+# apply the same expectations to an existing, compatible lab fact table.
+BRD_EXPECTED_SIGNALS = {
+    ("P0001", "promotion"): "SUPPORTED",
+    ("P0099", "bias"): "SUPPORTED",
+    ("P0020", "inventory"): "SUPPORTED",
+    ("P0040", "trend"): "SUPPORTED",
+    ("P0050", "price"): "POSSIBLE",
+    ("P0060", "seasonality"): "SUPPORTED",
+    ("P0070", "revenue"): "SUPPORTED",
+    ("P0080", "quality"): "SUPPORTED",
+    ("P0083", "bias"): "SUPPORTED",
+    ("P001", "bias"): "NOT_SUPPORTED",
+    ("P0084", "weather"): "POSSIBLE",
+    ("P0085", "competitor"): "POSSIBLE",
+    ("P0086", "lifecycle"): "POSSIBLE",
+    ("P0087", "mix"): "POSSIBLE",
+}
 GLOBAL = Principal(
     tenant="lab",
     subject="certification",
@@ -109,6 +138,7 @@ def generate():
                 "discount": 5.0,
                 "discount_unit": "percent",
                 "currency": "INR",
+                "unit_of_measure": "each",
                 "holiday_promotion": promo,
                 "weather_condition": None,
                 "seasonality": "synthetic_26_week"
@@ -162,28 +192,29 @@ def generate():
     return rows, products
 
 
+def fixture_key(row):
+    """Return the stable lab grain, normalizing Spark date-like values."""
+    return tuple(
+        str(row.get(name))[:10] if name == "date" else str(row.get(name))
+        for name in FIXTURE_GRAIN
+    )
+
+
+def missing_fixture_rows(existing, generated):
+    """Find absent fixture grains; matching existing rows are never replaced."""
+    existing_keys = {fixture_key(row) for row in existing}
+    return [
+        copy.deepcopy(row) for row in generated if fixture_key(row) not in existing_keys
+    ]
+
+
 def certify(provider, expectations=None):
     """Validate actual signals, then publish a separate scoped registry.
 
     FAIL is BLOCKED, not NOT_TESTABLE. Unknown external drivers remain explicit.
     A provisional registry exists only inside this certification function.
     """
-    expected = {
-        ("P0001", "promotion"): "SUPPORTED",
-        ("P0099", "bias"): "SUPPORTED",
-        ("P0020", "inventory"): "SUPPORTED",
-        ("P0040", "trend"): "SUPPORTED",
-        ("P0050", "price"): "POSSIBLE",
-        ("P0060", "seasonality"): "SUPPORTED",
-        ("P0070", "revenue"): "SUPPORTED",
-        ("P0080", "quality"): "SUPPORTED",
-        ("P0083", "bias"): "SUPPORTED",
-        ("P001", "bias"): "NOT_SUPPORTED",
-        ("P0084", "weather"): "POSSIBLE",
-        ("P0085", "competitor"): "POSSIBLE",
-        ("P0086", "lifecycle"): "POSSIBLE",
-        ("P0087", "mix"): "POSSIBLE",
-    }
+    expected = BRD_EXPECTED_SIGNALS
     if expectations is not None:
         expected = expectations
     provisional = copy.copy(provider)

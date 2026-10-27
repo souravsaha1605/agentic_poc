@@ -8,7 +8,13 @@ live separately from source data; they are never presented as enterprise facts.
 from datetime import datetime, timezone
 from business import FEATURE_VERSION
 from data_access import RecordsProvider, fingerprint, MAX_SOURCE_ROWS
-from lab import generate, certify, DATASET_VERSION
+from lab import (
+    BRD_EXPECTED_SIGNALS,
+    generate,
+    certify,
+    missing_fixture_rows,
+    DATASET_VERSION,
+)
 from state import checked_table
 
 
@@ -59,6 +65,8 @@ def audit(rows):
             flags.append("INVALID_DISCOUNT")
         if not r.get("currency"):
             flags.append("MISSING_CURRENCY")
+        if not r.get("unit_of_measure"):
+            flags.append("MISSING_UNIT_OF_MEASURE")
         if (
             as_date(r.get("date"))
             and as_date(r["date"]) > datetime.now(timezone.utc).date()
@@ -71,6 +79,9 @@ def audit(rows):
             r["forecast_generated_date"]
         ) > as_date(r["date"]):
             flags.append("FORECAST_LEAKAGE")
+    units = {r.get("unit_of_measure") for r in rows if r.get("unit_of_measure")}
+    if len(units) > 1:
+        flags.append("MIXED_UNIT_OF_MEASURE")
     return sorted(set(flags))
 
 
@@ -120,7 +131,79 @@ def _frame(spark, rows):
     )
 
 
-def initialize(spark, database="workspace.forecast_rca_lab"):
+def _validate_source_schema(schema, required):
+    """Reject missing or incompatible fields before any source row is changed."""
+    from pyspark.sql.types import NumericType, StringType, DateType, TimestampType
+
+    fields = {field.name: field.dataType for field in schema.fields}
+    missing = sorted(required - set(fields))
+    if missing:
+        raise ValueError(
+            "Existing fact schema is incomplete; missing: " + ", ".join(missing)
+        )
+    numeric = {
+        "units_sold",
+        "demand_forecast",
+        "inventory_level",
+        "price",
+        "discount",
+        "competitor_pricing",
+        "holiday_promotion",
+        "forecast_horizon_days",
+    }
+    date_like = {
+        "date",
+        "forecast_generated_date",
+        "inventory_timestamp",
+        "launch_date",
+        "weather_observed_at",
+    }
+    incompatible = []
+    for name in required:
+        kind = fields[name]
+        valid = (
+            isinstance(kind, NumericType)
+            if name in numeric
+            else isinstance(kind, (StringType, DateType, TimestampType))
+            if name in date_like
+            else isinstance(kind, StringType)
+        )
+        if not valid:
+            incompatible.append(f"{name}:{kind.simpleString()}")
+    if incompatible:
+        raise ValueError(
+            "Existing fact schema has incompatible types: " + ", ".join(incompatible)
+        )
+
+
+def _append_frame(spark, rows, target_schema):
+    """Project generated fixtures to the existing schema before append."""
+    from pyspark.sql import functions as F
+
+    generated = _frame(spark, rows)
+    expressions = []
+    for field in target_schema.fields:
+        value = F.col(field.name) if field.name in generated.columns else F.lit(None)
+        expressions.append(value.cast(field.dataType).alias(field.name))
+    return generated.select(*expressions)
+
+
+def _catalog(rows, known_products):
+    """Build the exact product/region scopes present in the staged source."""
+    known = {row["product_id"]: row["product_name"] for row in known_products}
+    unique = {(r["product_id"], r["region"], r["category"]) for r in rows}
+    return [
+        {
+            "product_id": product,
+            "product_name": known.get(product, product),
+            "region": region,
+            "category": category,
+        }
+        for product, region, category in sorted(unique)
+    ]
+
+
+def initialize(spark, database="workspace.forecast_rca_lab", _after_source_write=None):
     database = checked_table(database)
     if not database.split(".")[-1].endswith("_lab"):
         raise ValueError(
@@ -144,54 +227,28 @@ def initialize(spark, database="workspace.forecast_rca_lab"):
             "A supported golden fixture failed. Registry publication is blocked."
         )
     fact = f"{database}.fact_sales_forecast"
-    if not spark.catalog.tableExists(fact):
-        _frame(spark, generated).write.format("delta").mode(
-            "errorifexists"
-        ).saveAsTable(fact)
-    # Read the actual data; never mark it certified just because generation ran.
-    raw = spark.table(fact).limit(MAX_SOURCE_ROWS + 1).collect()
-    if not raw or len(raw) > MAX_SOURCE_ROWS:
+    existed = spark.catalog.tableExists(fact)
+    raw = spark.table(fact).limit(MAX_SOURCE_ROWS + 1).collect() if existed else []
+    if len(raw) > MAX_SOURCE_ROWS:
         raise ValueError(
-            "This small lab requires 1..20000 rows; use a scoped distributed certification job for larger sources."
+            "This small lab supports at most 20000 rows; use a scoped distributed certification job for larger sources."
         )
-    rows = [normalize(r.asDict()) for r in raw]
+    existing_rows = [normalize(r.asDict()) for r in raw]
     required = set(generated[0]) - {"scenario", "dataset_version", "seed"}
-    if not required.issubset(rows[0]):
-        raise ValueError(
-            "Existing fact schema is incomplete. Preserved without edits; use an explicit lab schema migration."
-        )
-    # Dedicated fixture table is create-once; it never overwrites existing data.
-    fixtures = f"{database}.rca_golden_fixtures"
-    if not spark.catalog.tableExists(fixtures):
-        _frame(spark, generated).write.format("delta").mode(
-            "errorifexists"
-        ).saveAsTable(fixtures)
-    product_table = f"{database}.dim_product"
-    if not spark.catalog.tableExists(product_table):
-        # Original IDs with known names retain those names. Unknown source IDs
-        # retain their exact ID as their display name, never an invented alias.
-        known = {r["product_id"]: r["product_name"] for r in products}
-        unique = {(r["product_id"], r["region"], r["category"]) for r in rows}
-        master = [
-            {
-                "product_id": p,
-                "product_name": known.get(p, p),
-                "region": region,
-                "category": category,
-            }
-            for p, region, category in sorted(unique)
-        ]
-        spark.createDataFrame(master).write.format("delta").mode(
-            "errorifexists"
-        ).saveAsTable(product_table)
-    actual_products = [r.asDict() for r in spark.table(product_table).collect()]
-    provider = RecordsProvider(rows, actual_products)
-    registry = certify(provider, expectations={})
-    # Comprehensive quality checks run once per entity here, not on each message.
+    if existed:
+        _validate_source_schema(spark.table(fact).schema, required)
+    additions = missing_fixture_rows(existing_rows, generated)
+    if len(existing_rows) + len(additions) > MAX_SOURCE_ROWS:
+        raise ValueError("Adding lab fixtures would exceed the 20000-row safety limit.")
+    staged_rows = existing_rows + additions
+    staged_products = _catalog(staged_rows, products)
+    staged = RecordsProvider(staged_rows, staged_products)
+    registry = certify(staged, expectations=BRD_EXPECTED_SIGNALS)
+    # Comprehensive quality checks run against the staged source before writes.
     for entry in registry:
         entity_rows = [
             r
-            for r in rows
+            for r in staged_rows
             if r["product_id"] == entry["product_id"] and r["region"] == entry["region"]
         ]
         flags = audit(entity_rows)
@@ -200,19 +257,97 @@ def initialize(spark, database="workspace.forecast_rca_lab"):
         if flags and entry["capability"] != "quality" and entry["status"] == "READY":
             entry.update(status="PARTIAL", data_quality="PARTIAL")
         if any(
-            f in flags
-            for f in (
+            flag
+            in {
                 "DUPLICATE_GRAIN",
                 "MISSING_KEY",
                 "FUTURE_ACTUAL",
                 "FORECAST_LEAKAGE",
-            )
+                "MISSING_UNIT_OF_MEASURE",
+                "MIXED_UNIT_OF_MEASURE",
+            }
+            for flag in flags
         ):
             entry.update(status="BLOCKED", validation="FAIL")
-    if any(r["validation"] == "FAIL" for r in registry):
+    source_failures = [r for r in registry if r["validation"] == "FAIL"]
+    if source_failures:
         raise RuntimeError(
-            "Source data certification failed. Existing source remains unchanged; no readiness published."
+            "Staged source failed expected-signal or quality certification; no source rows or readiness were published."
         )
+
+    # Validate the immutable golden table before changing the serving source.
+    fixtures = f"{database}.rca_golden_fixtures"
+    if spark.catalog.tableExists(fixtures):
+        fixture_rows = [
+            normalize(row.asDict())
+            for row in spark.table(fixtures).limit(MAX_SOURCE_ROWS + 1).collect()
+        ]
+        if fingerprint(fixture_rows) != fingerprint(generated):
+            raise RuntimeError(
+                "Golden fixture table differs from the versioned BRD fixtures; it was preserved and publication was blocked."
+            )
+
+    # Only now is it safe to create or append. Matching grains are untouched.
+    if not existed:
+        _frame(spark, staged_rows).write.format("delta").mode(
+            "errorifexists"
+        ).saveAsTable(fact)
+    elif additions:
+        _append_frame(spark, additions, spark.table(fact).schema).write.format(
+            "delta"
+        ).mode("append").saveAsTable(fact)
+    # Private test seam for proving that an interrupted multi-table publication
+    # is repaired by an idempotent rerun. Production callers leave this unset.
+    if _after_source_write:
+        _after_source_write()
+    if not spark.catalog.tableExists(fixtures):
+        _frame(spark, generated).write.format("delta").mode(
+            "errorifexists"
+        ).saveAsTable(fixtures)
+
+    # Re-read the committed source so its fingerprint matches served data types.
+    rows = [normalize(r.asDict()) for r in spark.table(fact).collect()]
+    actual_products = _catalog(rows, products)
+    product_table = f"{database}.dim_product"
+    if not spark.catalog.tableExists(product_table):
+        spark.createDataFrame(actual_products).write.format("delta").mode(
+            "errorifexists"
+        ).saveAsTable(product_table)
+    else:
+        from delta.tables import DeltaTable
+
+        DeltaTable.forName(spark, product_table).alias("t").merge(
+            spark.createDataFrame(actual_products).alias("s"),
+            "t.product_id=s.product_id AND t.region=s.region AND t.category=s.category",
+        ).whenNotMatchedInsertAll().execute()
+    actual_products = [
+        normalize(r.asDict()) for r in spark.table(product_table).collect()
+    ]
+    provider = RecordsProvider(rows, actual_products)
+    registry = certify(provider, expectations=BRD_EXPECTED_SIGNALS)
+    # Retain the already computed audit decisions with the committed fingerprint.
+    audit_by_scope = {
+        (r["product_id"], r["region"], r["capability"], r["store_id"]): r
+        for r in staged.registry
+    }
+    for entry in registry:
+        audited = audit_by_scope[
+            (
+                entry["product_id"],
+                entry["region"],
+                entry["capability"],
+                entry["store_id"],
+            )
+        ]
+        for name in (
+            "quality_flags",
+            "feature_version",
+            "data_quality",
+            "status",
+            "validation",
+        ):
+            if name in audited:
+                entry[name] = audited[name]
     # Keep the five governed view contracts; calculations are deterministic.
     base = f"""SELECT *, CAST(date AS DATE) AS target_date,
         demand_forecast-units_sold AS forecast_error,
@@ -290,7 +425,10 @@ def initialize(spark, database="workspace.forecast_rca_lab"):
     return {
         "source_version": provider.source_version,
         "rows": len(rows),
+        "existing_rows": len(existing_rows),
+        "generated_rows": len(additions),
         "golden_failures": len(failures),
+        "source_failures": len(source_failures),
         "readiness_records": len(registry),
-        "source_unchanged": True,
+        "source_unchanged": not additions,
     }

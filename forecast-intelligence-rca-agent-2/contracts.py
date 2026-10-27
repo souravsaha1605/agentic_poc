@@ -73,6 +73,9 @@ class AnalysisPlan(BaseModel):
     end: date | None = None
     as_of: date | None = None
     lookback_weeks: int = Field(default=12, ge=1, le=104)
+    lookback_months: int | None = Field(default=None, ge=1, le=24)
+    relative_period: Literal["this_month", "previous_month"] | None = None
+    compare_previous_period: bool = False
     vintage: date | None = None
     revenue_type: Literal["gross", "net", "both"] = "net"
     hypotheses: list[
@@ -99,6 +102,33 @@ class AnalysisPlan(BaseModel):
 
     @model_validator(mode="after")
     def valid_period(self):
+        if self.product_id == "*" and (not self.category or self.category == "*"):
+            raise ValueError("Aggregate product scope requires one concrete category.")
+        if self.product_id == "*" and self.tool in (
+            "run_forecast_rca",
+            "compare_scenarios",
+        ):
+            raise ValueError(
+                "Aggregate scope supports retrieval and historical patterns only."
+            )
+        selectors = sum(
+            bool(value)
+            for value in (
+                self.start,
+                self.fiscal_period,
+                self.lookback_months,
+                self.relative_period,
+                self.as_of,
+            )
+        )
+        if selectors > 1:
+            raise ValueError(
+                "Choose one period selector: explicit dates, fiscal period, month lookback, relative month or as-of."
+            )
+        if self.compare_previous_period and self.comparison_start:
+            raise ValueError(
+                "Choose either an explicit comparison period or the previous period."
+            )
         if bool(self.comparison_start) != bool(self.comparison_end):
             raise ValueError("Provide both comparison dates.")
         if self.comparison_start and (

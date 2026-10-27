@@ -12,7 +12,15 @@ from unittest.mock import patch
 from contracts import Principal, AnalysisPlan
 from conversation import ConversationService
 from business import BusinessService
-from lab import local_provider, certify, END
+from lab import (
+    BRD_EXPECTED_SIGNALS,
+    FIXTURE_GRAIN,
+    generate,
+    local_provider,
+    certify,
+    missing_fixture_rows,
+    END,
+)
 from state import SQLiteStateStore, ConflictError
 from cost_control import CallBudget, BudgetExceeded, EvidenceSelector
 from tool_executor import ToolExecutor
@@ -403,6 +411,20 @@ class AcceptanceTests(unittest.TestCase):
         self.assertTrue(
             any(r["status"] == "BLOCKED" and r["validation"] == "FAIL" for r in broken)
         )
+
+    def test_brd_signal_contract_and_missing_rows_preserve_existing_grains(self):
+        generated, _ = generate()
+        existing = copy.deepcopy(generated[:-5])
+        existing[0]["units_sold"] = 999.0
+        additions = missing_fixture_rows(existing, generated)
+        self.assertEqual(len(additions), 5)
+        self.assertEqual(existing[0]["units_sold"], 999.0)
+        self.assertEqual(
+            len({tuple(str(r.get(k)) for k in FIXTURE_GRAIN) for r in generated}),
+            len(generated),
+        )
+        self.assertEqual(BRD_EXPECTED_SIGNALS[("P0001", "promotion")], "SUPPORTED")
+        self.assertEqual(BRD_EXPECTED_SIGNALS[("P0020", "inventory")], "SUPPORTED")
 
     def test_all_required_patterns_have_meaningful_outputs(self):
         result = self.core.business.execute(
