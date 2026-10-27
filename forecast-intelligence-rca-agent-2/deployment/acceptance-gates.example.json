@@ -1,0 +1,10 @@
+{
+  "core_acceptance": false,
+  "valid_token": false,
+  "invalid_token": false,
+  "personal_chat": false,
+  "owner_isolation": false,
+  "restart_recovery": false,
+  "async_delivery": false,
+  "state_cutover": false
+}

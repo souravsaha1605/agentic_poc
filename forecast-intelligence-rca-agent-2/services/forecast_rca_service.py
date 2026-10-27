@@ -1,2101 +1,701 @@
-"""
-services/forecast_rca_service.py
-============================================================================
+"""Deterministic business calculations for the six approved capabilities.
 
-PURPOSE
--------
-Consolidated deterministic service layer for the Forecast Intelligence
-& RCA Agent.  All business logic, SQL queries, metric calculations, and
-RCA hypothesis testing live here.  The tools/ layer and agent/ layer are
-thin wrappers that delegate to these services.
-
-TEN SERVICES (BRD SS21)
-------------------------
-  1.  EntityResolutionService   -- resolve product/region/store from user input
-  2.  ConversationMemoryService  -- persist and retrieve conversation turns in Delta
-  3.  ScenarioStateService       -- manage structured scenario state (SCD-Type-2)
-  4.  ForecastService            -- forecast retrieval with WMAPE-based accuracy (BRD SS10)
-  5.  InventoryService           -- inventory levels, stockout flags, supply constraints
-  6.  RevenueService              -- gross/net revenue calculations (BRD FR-02)
-  7.  HistoricalPatternService    -- trend, volatility, level-shift, seasonality detection
-  8.  ForecastRCAService           -- deterministic evidence package + hypothesis testing
-  9.  ScenarioComparisonService   -- baseline vs current/what-if comparison
-  10. DataQualityService          -- data sufficiency and quality assessment
-
-DESIGN PRINCIPLES
------------------
-- Every method returns structured, sanitised evidence dicts suitable for
-  LLM consumption.  Raw transactional rows are never passed through.
-- All SQL uses parameterised string interpolation with values from config.py
-  constants (not user input) to prevent injection.
-- The RCA engine is fully deterministic: given the same data, it always
-  produces the same hypotheses, strengths, and statuses.
-
-BRD REFERENCES: SS9 (RCA), SS10 (Metrics), SS11 (Data Sufficiency),
-               SS13 (Entity Resolution), SS14 (Scenario State),
-               SS21 (Services), SS25 (RCA Engine), SS49 (Evidence Contract).
+No model calculates a metric or chooses authorization. Missing evidence stays
+missing. Correlation is supporting evidence, not proof of a business cause.
+All methods operate on a small, explicitly scoped internal dataset.
 """
 
-from __future__ import annotations
-
-import logging
 import math
-import uuid
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+import statistics
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
+from data_access import as_date
 
-from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql import functions as F
-from pyspark.sql.types import (
-    DoubleType, StructType, StructField, StringType, IntegerType, TimestampType,
-)
-
-from config import (
-    FACT_TABLE, DIM_PRODUCT_TABLE, DIM_ENTITY_ALIAS_TABLE,
-    VW_FORECAST_METRICS, VW_INVENTORY_HEALTH, VW_REVENUE_METRICS,
-    VW_FORECAST_HISTORY, VW_RCA_FEATURES,
-    CONVERSATION_TURNS_TABLE, SCENARIO_STATE_TABLE,
-    RCA_READINESS_TABLE, DB_PREFIX,
-    MAX_ROWS_RETURNED,
-    MIN_HISTORY_BIAS, MIN_HISTORY_TREND, MIN_HISTORY_PROMOTION,
-    MIN_HISTORY_INVENTORY, MIN_HISTORY_REVENUE, MIN_HISTORY_SEASONALITY,
-    STOCKOUT_THRESHOLD, LOW_INVENTORY_THRESHOLD,
-    SCENARIO_NEW, SCENARIO_ACTIVE, SCENARIO_ANALYZING,
-    SCENARIO_RCA_IDENT, SCENARIO_WHAT_IF, SCENARIO_OUTCOME,
-    SCENARIO_RESOLVED, SCENARIO_CLOSED,
-    HYPOTHESIS_FORECAST_BIAS, HYPOTHESIS_DEMAND_TREND,
-    HYPOTHESIS_SEASONALITY, HYPOTHESIS_PROMOTION,
-    HYPOTHESIS_PRICE, HYPOTHESIS_INVENTORY, HYPOTHESIS_DATA_QUALITY,
-    HYP_STATUS_SUPPORTED, HYP_STATUS_POSSIBLE, HYP_STATUS_NOT_SUPPORTED,
-    HYP_STATUS_NOT_TESTABLE, HYP_STATUS_VALIDATED,
-    DATA_SUFFICIENT, DATA_PARTIAL, DATA_INSUFFICIENT,
-    # Historical deviation parameters (BRD §24, FR-04)
-    HIST_LOOKBACK_WEEKS, HIST_RECENT_WEEKS, HIST_BASELINE_WEEKS,
-    HIST_MIN_OBSERVATIONS, HIST_SPIKE_THRESHOLD_STD,
-    HIST_SPIKE_MIN_UPLIFT_PCT, HIST_LEVEL_SHIFT_MIN_PCT,
-    HIST_TREND_MIN_SLOPE_RATIO, HIST_TREND_REVERSAL_THRESHOLD,
-    HIST_PERSISTENCE_MIN_RATIO, HIST_SEASONALITY_LOOKBACK_YEARS,
-    HIST_SEASONALITY_MIN_RECURRENCE, HIST_FORECAST_ANCHOR_PCT,
-    HIST_BIAS_MIN_PCT, HIST_ROLLING_BIAS_WINDOW,
-    # Historical deviation hypothesis categories
-    HYPOTHESIS_HIST_LEVEL_SHIFT, HYPOTHESIS_HIST_TEMPORARY_SPIKE,
-    HYPOTHESIS_HIST_TREND_CHANGE, HYPOTHESIS_HIST_PERSISTENT_BIAS,
-    HYPOTHESIS_HIST_FORECAST_ANCHORING, HYPOTHESIS_HIST_SEASONALITY,
-)
-from models import (
-    EntityContext, TimeRange, ScenarioState, ConversationTurn,
-    ForecastSummary, InventorySummary, RevenueSummary,
-    DataQualityStatus, RCAEvidence, RCAHypothesis, RCAResult,
-    ToolResult,
-    HistoricalDeviationEvidence, HistoricalDeviationResult,
-)
-
-logger = logging.getLogger(__name__)
-_spark: Optional[SparkSession] = None
+LOGIC_VERSION = "rca-review-5.2"
+FEATURE_VERSION = "weekly-5.2"
+MIN_WEEKS = {
+    "bias": 4,
+    "trend": 8,
+    "promotion": 8,
+    "inventory": 8,
+    "price": 8,
+    "revenue": 4,
+    "seasonality": 52,
+    "competitor": 8,
+    "weather": 8,
+    "lifecycle": 8,
+    "mix": 8,
+    "quality": 1,
+}
 
 
-def _get_spark() -> SparkSession:
-    """Return the active Spark session (singleton, lazily initialised)."""
-    global _spark
-    if _spark is None:
-        _spark = SparkSession.getActiveSession()
-    return _spark
+def number(value):
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
 
 
-# ============================================================
-#  1. EntityResolutionService  (BRD §13, §6.4)
-# ============================================================
-
-class EntityResolutionService:
-    """
-    Mandatory entity resolution before tool selection (BRD SS13).
-
-    Resolution strategy (in order of priority):
-      1. Exact product_id match on fact table
-      2. SKU match on dim_product
-      3. Name LIKE match on dim_product (returns multiple candidates if ambiguous)
-      4. If multiple matches -> mark ambiguous and return candidates for clarification
-    """
-
-    def resolve_product(
-        self,
-        product_id: Optional[str] = None,
-        product_name: Optional[str] = None,
-    ) -> EntityContext:
-        spark = _get_spark()
-        ctx = EntityContext(product_id=product_id, product_name=product_name)
-
-        # Try exact ID match on fact table
-        if product_id:
-            df = spark.sql(
-                f"""SELECT DISTINCT product_id, region, category
-                    FROM {FACT_TABLE}
-                    WHERE product_id = '{product_id}' LIMIT 1"""
-            )
-            row = df.collect()
-            if row:
-                r = row[0]
-                ctx.product_id = r["product_id"]
-                ctx.region = r["region"]
-                ctx.category = r["category"]
-                ctx.resolved = True
-                return ctx
-
-            # Try dim_product sku match
-            df2 = spark.sql(
-                f"""SELECT sku, product_name, category, region
-                    FROM {DIM_PRODUCT_TABLE}
-                    WHERE sku = '{product_id}' LIMIT 1"""
-            )
-            row2 = df2.collect()
-            if row2:
-                r = row2[0]
-                ctx.product_id = r["sku"]
-                ctx.product_name = r["product_name"]
-                ctx.category = r["category"]
-                ctx.region = r["region"]
-                ctx.resolved = True
-                return ctx
-
-        # Try name match on dim_product
-        if product_name:
-            df = spark.sql(
-                f"""SELECT sku, product_name, category, region
-                    FROM {DIM_PRODUCT_TABLE}
-                    WHERE LOWER(product_name) LIKE LOWER('%{product_name}%')"""
-            )
-            rows = df.collect()
-            if len(rows) == 1:
-                r = rows[0]
-                ctx.product_id = r["sku"]
-                ctx.product_name = r["product_name"]
-                ctx.category = r["category"]
-                ctx.region = r["region"]
-                ctx.resolved = True
-            elif len(rows) > 1:
-                ctx.ambiguous = True
-                ctx.candidates = [
-                    {"product_id": r["sku"], "product_name": r["product_name"]}
-                    for r in rows[:5]
-                ]
-
-        return ctx
-
-    def resolve_entity(
-        self,
-        product_id: Optional[str] = None,
-        product_name: Optional[str] = None,
-        region: Optional[str] = None,
-        store_id: Optional[str] = None,
-        category: Optional[str] = None,
-    ) -> EntityContext:
-        """Full entity resolution (BRD §13)."""
-        ctx = self.resolve_product(product_id, product_name)
-        if region:
-            ctx.region = region
-        if store_id:
-            ctx.store_id = store_id
-        if category:
-            ctx.category = category
-        return ctx
+def mean(values):
+    values = [v for v in values if number(v)]
+    return statistics.mean(values) if values else None
 
 
-# ============================================================
-#  2. ConversationMemoryService  (BRD §14 FR-08, §31)
-# ============================================================
-
-class ConversationMemoryService:
-    """
-    Persists and retrieves conversation turns in Delta (BRD SS31 Iteration 1).
-    Each turn is appended to the conversation_turns table with session_id,
-    turn_id, role, message, scenario_id, intent, and scenario_action.
-    """
-
-    def save_turn(self, turn: ConversationTurn) -> None:
-        spark = _get_spark()
-        data = [(turn.session_id, turn.turn_id, turn.user_id,
-                 datetime.now(), turn.role, turn.message,
-                 turn.scenario_id, turn.intent, turn.scenario_action)]
-        schema_fields = StructType([
-            StructField("session_id", StringType(), True),
-            StructField("turn_id", IntegerType(), True),
-            StructField("user_id", StringType(), True),
-            StructField("timestamp", TimestampType(), True),
-            StructField("role", StringType(), True),
-            StructField("message", StringType(), True),
-            StructField("scenario_id", StringType(), True),
-            StructField("intent", StringType(), True),
-            StructField("scenario_action", StringType(), True),
-        ])
-        df = spark.createDataFrame(data, schema=schema_fields)
-        df.write.format("delta").mode("append").saveAsTable(CONVERSATION_TURNS_TABLE)
-
-    def get_history(self, session_id: str, limit: int = 20) -> List[Dict]:
-        spark = _get_spark()
-        df = spark.sql(f"""
-            SELECT role, message, timestamp, scenario_id, intent
-            FROM {CONVERSATION_TURNS_TABLE}
-            WHERE session_id = '{session_id}'
-            ORDER BY turn_id DESC
-            LIMIT {limit}
-        """)
-        rows = df.collect()
-        return [{"role": r["role"], "message": r["message"],
-                 "timestamp": str(r["timestamp"]), "scenario_id": r["scenario_id"],
-                 "intent": r["intent"]} for r in reversed(rows)]
-
-    def get_next_turn_id(self, session_id: str) -> int:
-        spark = _get_spark()
-        try:
-            row = spark.sql(f"""
-                SELECT COALESCE(MAX(turn_id), 0) + 1 AS next_id
-                FROM {CONVERSATION_TURNS_TABLE}
-                WHERE session_id = '{session_id}'
-            """).collect()
-            return row[0]["next_id"] if row else 1
-        except Exception:
-            return 1
+def change(previous, current):
+    return (
+        (current - previous) / abs(previous) * 100
+        if previous not in (None, 0) and current is not None
+        else None
+    )
 
 
-# ============================================================
-#  3. ScenarioStateService  (BRD §14 FR-09, §16, §17, §31)
-# ============================================================
-
-class ScenarioStateService:
-    """
-    Manages structured scenario state in Delta (BRD SS31 Iteration 1).
-    Uses SCD-Type-2 pattern: every update appends a new row with an incremented
-    version, preserving the full history of scenario evolution.
-    """
-
-    def create_scenario(
-        self,
-        session_id: str,
-        user_id: str = "demand_planner",
-        entities: Optional[EntityContext] = None,
-        time_range: Optional[TimeRange] = None,
-        analysis_type: str = "",
-    ) -> ScenarioState:
-        scenario_id = f"SCN-{uuid.uuid4().hex[:8].upper()}"
-        now = datetime.now()
-        state = ScenarioState(
-            scenario_id=scenario_id,
-            session_id=session_id,
-            user_id=user_id,
-            status=SCENARIO_NEW,
-            resolved_entities=entities or EntityContext(),
-            time_range=time_range,
-            analysis_type=analysis_type,
-            created_at=now,
-            updated_at=now,
-        )
-        self._persist(state)
-        return state
-
-    def load_scenario(self, scenario_id: str) -> Optional[ScenarioState]:
-        spark = _get_spark()
-        try:
-            df = spark.sql(f"""
-                SELECT * FROM {SCENARIO_STATE_TABLE}
-                WHERE scenario_id = '{scenario_id}'
-                ORDER BY version DESC LIMIT 1
-            """)
-            row = df.collect()
-            if not row:
-                return None
-            r = row[0]
-            import json
-            return ScenarioState(
-                scenario_id=r["scenario_id"],
-                session_id=r["session_id"],
-                user_id=r["user_id"],
-                status=r["status"],
-                resolved_entities=EntityContext(
-                    **json.loads(r["resolved_entities"]) if r["resolved_entities"] else {}
-                ),
-                analysis_type=r["analysis_type"] or "",
-                active_issue=r["active_issue"] or "",
-                rca_summary=r["rca_summary"],
-                scenario_version=r["version"] or 1,
-                created_at=r["created_at"],
-                updated_at=r["updated_at"],
-            )
-        except Exception as exc:
-            logger.warning("Could not load scenario %s: %s", scenario_id, exc)
-            return None
-
-    def load_active_scenario(self, session_id: str) -> Optional[ScenarioState]:
-        spark = _get_spark()
-        try:
-            df = spark.sql(f"""
-                SELECT scenario_id FROM {SCENARIO_STATE_TABLE}
-                WHERE session_id = '{session_id}'
-                  AND status NOT IN ('{SCENARIO_RESOLVED}', '{SCENARIO_CLOSED}')
-                ORDER BY updated_at DESC LIMIT 1
-            """)
-            row = df.collect()
-            if row:
-                return self.load_scenario(row[0]["scenario_id"])
-        except Exception:
-            pass
-        return None
-
-    def update_scenario(self, state: ScenarioState) -> None:
-        state.updated_at = datetime.now()
-        state.scenario_version += 1
-        self._persist(state)
-
-    def _persist(self, state: ScenarioState) -> None:
-        spark = _get_spark()
-        import json
-        data = [(
-            state.scenario_id, state.session_id, state.user_id,
-            state.status, json.dumps(state.resolved_entities.model_dump()),
-            json.dumps(state.time_range.model_dump()) if state.time_range else None,
-            state.analysis_type, state.active_issue,
-            json.dumps(state.baseline_state) if state.baseline_state else None,
-            json.dumps(state.current_state) if state.current_state else None,
-            json.dumps(state.previous_state) if state.previous_state else None,
-            json.dumps(state.last_tool_results) if state.last_tool_results else None,
-            state.rca_summary,
-            json.dumps(state.rca_evidence) if state.rca_evidence else None,
-            json.dumps(state.rca_hypotheses) if state.rca_hypotheses else None,
-            json.dumps(state.recommendations) if state.recommendations else None,
-            json.dumps(state.what_if_parameters) if state.what_if_parameters else None,
-            json.dumps(state.reported_outcomes) if state.reported_outcomes else None,
-            json.dumps(state.assumptions) if state.assumptions else None,
-            state.scenario_version, state.created_at, state.updated_at,
-        )]
-        cols = StructType([
-            StructField("scenario_id", StringType(), True),
-            StructField("session_id", StringType(), True),
-            StructField("user_id", StringType(), True),
-            StructField("status", StringType(), True),
-            StructField("resolved_entities", StringType(), True),
-            StructField("time_range", StringType(), True),
-            StructField("analysis_type", StringType(), True),
-            StructField("active_issue", StringType(), True),
-            StructField("baseline_state", StringType(), True),
-            StructField("current_state", StringType(), True),
-            StructField("previous_state", StringType(), True),
-            StructField("last_tool_results", StringType(), True),
-            StructField("rca_summary", StringType(), True),
-            StructField("rca_evidence", StringType(), True),
-            StructField("rca_hypotheses", StringType(), True),
-            StructField("recommendations", StringType(), True),
-            StructField("what_if_parameters", StringType(), True),
-            StructField("reported_outcomes", StringType(), True),
-            StructField("assumptions", StringType(), True),
-            StructField("version", IntegerType(), True),
-            StructField("created_at", TimestampType(), True),
-            StructField("updated_at", TimestampType(), True),
-        ])
-        df = spark.createDataFrame(data, schema=cols)
-        df.write.format("delta").mode("append").saveAsTable(SCENARIO_STATE_TABLE)
+def rounded(value):
+    return round(value, 2) if number(value) else None
 
 
-# ============================================================
-#  4. ForecastService  (BRD FR-01, §10)
-# ============================================================
-
-class ForecastService:
-    """
-    Deterministic forecast retrieval with time-window controls (BRD FR-01, SS10).
-
-    Computes WMAPE-based forecast accuracy (not simple average MAPE):
-      WMAPE    = SUM(|Forecast - Actual|) / SUM(Actual)
-      Accuracy = (1 - WMAPE) * 100
-      Bias %   = (SUM(Forecast) - SUM(Actual)) / SUM(Actual) * 100
-    """
-
-    def get_forecast_data(
-        self,
-        product_id: str,
-        region: Optional[str] = None,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-        lookback_weeks: int = 12,
-        include_history: bool = False,
-    ) -> Dict[str, Any]:
-        spark = _get_spark()
-
-        # Build date filter
-        date_filter = self._build_date_filter(start_date, end_date, lookback_weeks)
-
-        where_clauses = [f"product_id = '{product_id}'", date_filter]
-        if region:
-            where_clauses.append(f"region = '{region}'")
-
-        where_sql = " AND ".join(where_clauses)
-
-        # Aggregate metrics (WMAPE-based, not simple average — BRD §10)
-        agg_df = spark.sql(f"""
-            SELECT
-                SUM(demand_forecast)                    AS total_forecast,
-                SUM(units_sold)                         AS total_actual,
-                SUM(ABS(demand_forecast - units_sold))  AS sum_abs_error,
-                COUNT(*)                                AS n_obs,
-                MIN(date)                               AS coverage_start,
-                MAX(date)                               AS coverage_end
-            FROM {FACT_TABLE}
-            WHERE {where_sql}
-        """)
-        agg = agg_df.collect()
-        if not agg or agg[0]["n_obs"] == 0:
-            return {
-                "success": False,
-                "error": f"No forecast data found for {product_id}"
-                         + (f" in {region}" if region else ""),
-            }
-
-        r = agg[0]
-        total_forecast = float(r["total_forecast"] or 0)
-        total_actual = float(r["total_actual"] or 0)
-        sum_abs_error = float(r["sum_abs_error"] or 0)
-        n_obs = int(r["n_obs"] or 0)
-
-        # WMAPE (BRD §10)
-        wmape = (sum_abs_error / total_actual * 100) if total_actual > 0 else None
-        accuracy = (100 - wmape) if wmape is not None else None
-        bias_pct = ((total_forecast - total_actual) / total_actual * 100) if total_actual > 0 else None
-
-        result = {
-            "product_id": product_id,
-            "region": region,
-            "period": f"{r['coverage_start']} to {r['coverage_end']}",
-            "total_forecast": round(total_forecast, 2),
-            "total_actual": round(total_actual, 2),
-            "avg_forecast": round(total_forecast / n_obs, 2) if n_obs else 0,
-            "avg_actual": round(total_actual / n_obs, 2) if n_obs else 0,
-            "wmape": round(wmape, 2) if wmape is not None else None,
-            "forecast_accuracy": round(accuracy, 2) if accuracy is not None else None,
-            "forecast_bias_pct": round(bias_pct, 2) if bias_pct is not None else None,
-            "observations": n_obs,
-            "coverage_start": str(r["coverage_start"]),
-            "coverage_end": str(r["coverage_end"]),
+def weekly(rows):
+    groups = defaultdict(list)
+    for r in rows:
+        d = as_date(r["date"])
+        groups[d - timedelta(days=d.weekday())].append(r)
+    return [
+        {
+            "date": str(d),
+            "actual": sum(r["units_sold"] for r in batch),
+            "forecast": sum(r["demand_forecast"] for r in batch),
         }
+        for d, batch in sorted(groups.items())
+    ]
 
-        # Optional history
-        if include_history:
-            hist_df = spark.sql(f"""
-                SELECT date, demand_forecast, units_sold,
-                       demand_forecast - units_sold AS forecast_error,
-                       CASE WHEN units_sold > 0
-                            THEN ROUND(ABS(demand_forecast - units_sold) / units_sold * 100, 2)
-                            ELSE NULL END AS abs_pct_error
-                FROM {FACT_TABLE}
-                WHERE {where_sql}
-                ORDER BY date DESC
-                LIMIT {MAX_ROWS_RETURNED}
-            """)
-            result["history"] = [
-                {"date": str(row["date"]),
-                 "forecast": row["demand_forecast"],
-                 "actual": row["units_sold"],
-                 "error": row["forecast_error"],
-                 "abs_pct_error": row["abs_pct_error"]}
-                for row in hist_df.collect()
-            ]
 
-        return result
+class BusinessService:
+    def __init__(self, provider, today=None):
+        self.provider = provider
+        self.today = today or date.today()
 
-    def _build_date_filter(
-        self,
-        start: Optional[date],
-        end: Optional[date],
-        lookback_weeks: int,
-    ) -> str:
-        if start and end:
-            return f"date >= '{start}' AND date <= '{end}'"
-        # Compute lookback from max available date
-        spark = _get_spark()
-        max_row = spark.sql(f"SELECT MAX(date) AS max_d FROM {FACT_TABLE}").collect()
-        max_date = max_row[0]["max_d"] if max_row else date.today()
-        cutoff = max_date - timedelta(weeks=lookback_weeks)
-        return f"date >= '{cutoff}' AND date <= '{max_date}'"
-
-    # ------------------------------------------------------------------
-    def get_forecast_ranking(
-        self,
-        region: Optional[str] = None,
-        category: Optional[str] = None,
-        top_n: int = 10,
-        sort_by: str = "wmape",
-    ) -> Dict[str, Any]:
-        """
-        Return a ranking of SKUs by forecast error metric for a given region.
-
-        Args:
-            region: Filter by region (optional, but typically required).
-            category: Filter by category (optional).
-            top_n: Number of top SKUs to return (default 10).
-            sort_by: Sort metric -- 'wmape', 'bias', or 'absolute_error' (default wmape).
-
-        Returns:
-            Dict with success, rankings list, and count.
-        """
-        spark = _get_spark()
-
-        # Whitelist sort columns to prevent SQL injection
-        sort_map = {
-            "wmape": "wmape DESC",
-            "bias": "ABS(bias_pct) DESC",
-            "absolute_error": "sum_abs_error DESC",
-        }
-        order_clause = sort_map.get(sort_by, "wmape DESC")
-        top_n = min(max(top_n, 1), 100)  # Clamp 1..100
-
-        where_parts = []
-        if region:
-            where_parts.append(f"region = '{region}'")
-        if category:
-            where_parts.append(f"category = '{category}'")
-        where_clause = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
-
-        df = spark.sql(f"""
-            SELECT
-                product_id,
-                region,
-                category,
-                SUM(demand_forecast) AS total_forecast,
-                SUM(units_sold)      AS total_actual,
-                SUM(absolute_error)   AS sum_abs_error,
-                ROUND(SUM(absolute_error) / NULLIF(SUM(units_sold), 0) * 100, 2) AS wmape,
-                ROUND((SUM(demand_forecast) - SUM(units_sold)) / NULLIF(SUM(units_sold), 0) * 100, 2) AS bias_pct,
-                ROUND(100 - SUM(absolute_error) / NULLIF(SUM(units_sold), 0) * 100, 2) AS forecast_accuracy,
-                COUNT(*) AS n_obs
-            FROM {FACT_TABLE}
-            {where_clause}
-            GROUP BY product_id, region, category
-            ORDER BY {order_clause}
-            LIMIT {top_n}
-        """)
-        rows = df.collect()
-
-        rankings = []
+    def prepare(self, plan, principal):
+        # A host grant is checked even if the model proposes a different product.
+        principal.authorize(plan.product_id, plan.region, plan.category)
+        rows = self.provider.fetch(plan)
+        if not rows:
+            raise ValueError("No data is available for this entity and period.")
         for r in rows:
-            rankings.append({
-                "product_id": r["product_id"],
-                "region": r["region"],
-                "category": r["category"],
-                "total_forecast": r["total_forecast"],
-                "total_actual": r["total_actual"],
-                "wmape": r["wmape"],
-                "bias_pct": r["bias_pct"],
-                "forecast_accuracy": r["forecast_accuracy"],
-                "n_obs": r["n_obs"],
-            })
-
-        return {
-            "success": True,
-            "region": region or "ALL",
-            "category": category or "ALL",
-            "sort_by": sort_by,
-            "top_n": top_n,
-            "count": len(rankings),
-            "rankings": rankings,
-        }
-
-
-# ============================================================
-#  5. InventoryService  (BRD FR-03, §12)
-# ============================================================
-
-class InventoryService:
-    """Deterministic inventory retrieval with freshness / as-of handling."""
-
-    def get_inventory_data(
-        self,
-        product_id: str,
-        region: Optional[str] = None,
-        as_of_date: Optional[str] = None,
-        lookback_weeks: int = 12,
-        include_history: bool = False,
-    ) -> Dict[str, Any]:
-        spark = _get_spark()
-
-        if as_of_date:
-            date_filter = f"date <= '{as_of_date}'"
-        else:
-            max_row = spark.sql(f"SELECT MAX(date) AS max_d FROM {FACT_TABLE} WHERE product_id = '{product_id}'").collect()
-            max_date = max_row[0]["max_d"] if max_row and max_row[0]["max_d"] else date.today()
-            cutoff = max_date - timedelta(weeks=lookback_weeks)
-            date_filter = f"date >= '{cutoff}' AND date <= '{max_date}'"
-
-        where_parts = [f"product_id = '{product_id}'", date_filter]
-        if region:
-            where_parts.append(f"region = '{region}'")
-        where_sql = " AND ".join(where_parts)
-
-        # Latest inventory (not blindly most-recent row — BRD FR-03)
-        latest_df = spark.sql(f"""
-            SELECT date, inventory_level, units_sold,
-                   CASE
-                       WHEN inventory_level <= {STOCKOUT_THRESHOLD} THEN 'Stockout'
-                       WHEN inventory_level < units_sold * 1.5 THEN 'Low Inventory'
-                       ELSE 'Healthy'
-                   END AS inventory_status,
-                   CASE WHEN inventory_level <= {STOCKOUT_THRESHOLD} THEN true ELSE false END AS stockout_flag
-            FROM {FACT_TABLE}
-            WHERE {where_sql}
-            ORDER BY date DESC
-            LIMIT 1
-        """)
-        latest = latest_df.collect()
-        if not latest:
-            return {
-                "success": False,
-                "error": f"No inventory data found for {product_id}"
-                         + (f" in {region}" if region else ""),
-            }
-
-        r = latest[0]
-        inv_level = float(r["inventory_level"] or 0)
-        units = float(r["units_sold"] or 1)
-        inv_days = round(inv_level / units, 1) if units > 0 else None
-
-        result = {
-            "product_id": product_id,
-            "region": region,
-            "as_of_date": str(r["date"]),
-            "inventory_level": inv_level,
-            "inventory_status": r["inventory_status"],
-            "stockout_flag": bool(r["stockout_flag"]),
-            "inventory_days": inv_days,
-        }
-
-        if include_history:
-            hist_df = spark.sql(f"""
-                SELECT date, inventory_level, units_sold,
-                       CASE WHEN inventory_level <= {STOCKOUT_THRESHOLD} THEN true ELSE false END AS stockout_flag
-                FROM {FACT_TABLE}
-                WHERE {where_sql}
-                ORDER BY date DESC
-                LIMIT {MAX_ROWS_RETURNED}
-            """)
-            result["history"] = [
-                {"date": str(row["date"]),
-                 "inventory_level": row["inventory_level"],
-                 "units_sold": row["units_sold"],
-                 "stockout_flag": bool(row["stockout_flag"])}
-                for row in hist_df.collect()
-            ]
-
-        return result
-
-
-# ============================================================
-#  6. RevenueService  (BRD FR-02, §10)
-# ============================================================
-
-class RevenueService:
-    """Deterministic revenue retrieval (BRD FR-02).
-
-    Gross Revenue = Units Sold × Price
-    Net Revenue   = Units Sold × Price × (1 - Discount / 100)
-    """
-
-    def get_revenue_data(
-        self,
-        product_id: str,
-        region: Optional[str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        lookback_weeks: int = 12,
-        revenue_type: str = "net",
-        include_trend: bool = False,
-    ) -> Dict[str, Any]:
-        spark = _get_spark()
-
-        # Build date filter
-        if start_date and end_date:
-            date_filter = f"date >= '{start_date}' AND date <= '{end_date}'"
-        else:
-            max_row = spark.sql(f"SELECT MAX(date) AS max_d FROM {FACT_TABLE} WHERE product_id = '{product_id}'").collect()
-            max_date = max_row[0]["max_d"] if max_row and max_row[0]["max_d"] else date.today()
-            cutoff = max_date - timedelta(weeks=lookback_weeks)
-            date_filter = f"date >= '{cutoff}' AND date <= '{max_date}'"
-
-        where_parts = [f"product_id = '{product_id}'", date_filter]
-        if region:
-            where_parts.append(f"region = '{region}'")
-        where_sql = " AND ".join(where_parts)
-
-        df = spark.sql(f"""
-            SELECT
-                SUM(units_sold * price)                                       AS gross_revenue,
-                SUM(units_sold * price * (1 - discount / 100))                 AS net_revenue,
-                SUM(units_sold)                                               AS total_units,
-                AVG(price)                                                    AS avg_price,
-                AVG(discount)                                                  AS avg_discount,
-                MIN(date)                                                      AS coverage_start,
-                MAX(date)                                                      AS coverage_end,
-                COUNT(*)                                                       AS n_obs
-            FROM {FACT_TABLE}
-            WHERE {where_sql}
-        """)
-        row = df.collect()
-        if not row or row[0]["n_obs"] == 0:
-            return {
-                "success": False,
-                "error": f"No revenue data found for {product_id}"
-                         + (f" in {region}" if region else ""),
-            }
-
-        r = row[0]
-        gross = float(r["gross_revenue"] or 0)
-        net = float(r["net_revenue"] or 0)
-
-        result = {
-            "product_id": product_id,
-            "region": region,
-            "period": f"{r['coverage_start']} to {r['coverage_end']}",
-            "gross_revenue": round(gross, 2),
-            "net_revenue": round(net, 2),
-            "total_units": int(r["total_units"] or 0),
-            "avg_price": round(float(r["avg_price"] or 0), 2),
-            "avg_discount": round(float(r["avg_discount"] or 0), 2),
-            "revenue_type": revenue_type,
-            "primary_revenue": round(net if revenue_type == "net" else gross, 2),
-        }
-
-        if include_trend:
-            trend_df = spark.sql(f"""
-                SELECT date,
-                       SUM(units_sold * price) AS gross_revenue,
-                       SUM(units_sold * price * (1 - discount / 100)) AS net_revenue
-                FROM {FACT_TABLE}
-                WHERE {where_sql}
-                GROUP BY date
-                ORDER BY date DESC
-                LIMIT 30
-            """)
-            result["trend"] = [
-                {"date": str(row2["date"]),
-                 "gross_revenue": round(row2["gross_revenue"], 2),
-                 "net_revenue": round(row2["net_revenue"], 2)}
-                for row2 in trend_df.collect()
-            ]
-
-        return result
-
-
-# ============================================================
-#  7. HistoricalPatternService  (BRD FR-04, §24)
-# ============================================================
-
-class HistoricalPatternService:
-    """Deterministic pattern detection over configurable lookback."""
-
-    def analyze_patterns(
-        self,
-        product_id: str,
-        region: Optional[str] = None,
-        lookback_weeks: int = 12,
-        patterns: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
-        spark = _get_spark()
-        all_patterns = patterns or [
-            "trend", "volatility", "level_shift", "bias_drift",
-            "accuracy_deterioration", "actual_vs_forecast_divergence",
-            "demand_spikes", "promotion_linked", "inventory_constrained",
+            principal.authorize(r["product_id"], r["region"], r["category"])
+        dates = [as_date(r["date"]) for r in rows]
+        end = plan.end or plan.as_of or min(max(dates), self.today)
+        start = plan.start or end - timedelta(weeks=plan.lookback_weeks) + timedelta(
+            days=1
+        )
+        # Inventory as-of must search all prior snapshots, including an old one.
+        scoped = [
+            r
+            for r in rows
+            if as_date(r["date"]) <= end
+            and (plan.tool == "get_inventory_context" or as_date(r["date"]) >= start)
         ]
-
-        where_parts = [f"product_id = '{product_id}'"]
-        if region:
-            where_parts.append(f"region = '{region}'")
-        where_sql = " AND ".join(where_parts)
-
-        max_row = spark.sql(f"SELECT MAX(date) AS max_d FROM {FACT_TABLE} WHERE {where_sql}").collect()
-        if not max_row or not max_row[0]["max_d"]:
-            return {"success": False, "error": f"No data for {product_id}"}
-        max_date = max_row[0]["max_d"]
-        cutoff = max_date - timedelta(weeks=lookback_weeks)
-
-        df = spark.sql(f"""
-            SELECT date, units_sold, demand_forecast, inventory_level,
-                   holiday_promotion, price, discount
-            FROM {FACT_TABLE}
-            WHERE {where_sql} AND date >= '{cutoff}' AND date <= '{max_date}'
-            ORDER BY date
-        """)
-        rows = df.collect()
-        if len(rows) < 4:
-            return {
-                "success": False,
-                "error": f"Insufficient history ({len(rows)} obs) for pattern analysis",
-            }
-
-        actuals = [r["units_sold"] for r in rows]
-        forecasts = [r["demand_forecast"] for r in rows]
-        dates = [r["date"] for r in rows]
-        n = len(rows)
-
-        result: Dict[str, Any] = {
-            "product_id": product_id,
-            "region": region,
-            "period": f"{dates[0]} to {dates[-1]}",
-            "observations": n,
-            "patterns": {},
-        }
-
-        # --- Trend (linear regression slope) ---
-        if "trend" in all_patterns:
-            x_mean = sum(range(n)) / n
-            y_mean = sum(actuals) / n
-            num = sum((i - x_mean) * (actuals[i] - y_mean) for i in range(n))
-            den = sum((i - x_mean) ** 2 for i in range(n))
-            slope = num / den if den != 0 else 0
-            result["patterns"]["trend"] = {
-                "slope": round(slope, 4),
-                "direction": "increasing" if slope > 1 else "decreasing" if slope < -1 else "stable",
-                "avg_actual": round(y_mean, 2),
-            }
-
-        # --- Volatility (coefficient of variation) ---
-        if "volatility" in all_patterns:
-            mean_a = sum(actuals) / n if n else 0
-            var_a = sum((a - mean_a) ** 2 for a in actuals) / n if n else 0
-            std_a = math.sqrt(var_a)
-            cv = (std_a / mean_a * 100) if mean_a > 0 else 0
-            result["patterns"]["volatility"] = {
-                "std_dev": round(std_a, 2),
-                "cv_pct": round(cv, 2),
-                "level": "high" if cv > 40 else "medium" if cv > 20 else "low",
-            }
-
-        # --- Level shift (compare first half vs second half) ---
-        if "level_shift" in all_patterns:
-            mid = n // 2
-            first_half = sum(actuals[:mid]) / max(mid, 1)
-            second_half = sum(actuals[mid:]) / max(n - mid, 1)
-            shift_pct = ((second_half - first_half) / first_half * 100) if first_half > 0 else 0
-            result["patterns"]["level_shift"] = {
-                "first_half_avg": round(first_half, 2),
-                "second_half_avg": round(second_half, 2),
-                "shift_pct": round(shift_pct, 2),
-                "detected": abs(shift_pct) > 15,
-            }
-
-        # --- Bias drift ---
-        if "bias_drift" in all_patterns:
-            errors = [(forecasts[i] - actuals[i]) for i in range(n)]
-            rolling_errors = []
-            window = min(4, n)
-            for i in range(window, n + 1):
-                w_errors = errors[i - window:i]
-                rolling_errors.append(sum(w_errors) / len(w_errors))
-            if len(rolling_errors) >= 2:
-                first_re = rolling_errors[0]
-                last_re = rolling_errors[-1]
-                drift = last_re - first_re
-                result["patterns"]["bias_drift"] = {
-                    "initial_rolling_bias": round(first_re, 2),
-                    "final_rolling_bias": round(last_re, 2),
-                    "drift": round(drift, 2),
-                    "direction": "worsening_overforecast" if drift > 0 else "worsening_underforecast" if drift < 0 else "stable",
-                }
-
-        # --- Accuracy deterioration ---
-        if "accuracy_deterioration" in all_patterns:
-            mid = n // 2
-            first_errors = [abs(forecasts[i] - actuals[i]) for i in range(mid)]
-            second_errors = [abs(forecasts[i] - actuals[i]) for i in range(mid, n)]
-            first_mae = sum(first_errors) / max(len(first_errors), 1)
-            second_mae = sum(second_errors) / max(len(second_errors), 1)
-            deterioration_pct = ((second_mae - first_mae) / first_mae * 100) if first_mae > 0 else 0
-            result["patterns"]["accuracy_deterioration"] = {
-                "first_half_mae": round(first_mae, 2),
-                "second_half_mae": round(second_mae, 2),
-                "deterioration_pct": round(deterioration_pct, 2),
-                "deteriorating": deterioration_pct > 10,
-            }
-
-        # --- Actual vs forecast divergence ---
-        if "actual_vs_forecast_divergence" in all_patterns:
-            total_f = sum(forecasts)
-            total_a = sum(actuals)
-            divergence_pct = ((total_f - total_a) / total_a * 100) if total_a > 0 else 0
-            result["patterns"]["actual_vs_forecast_divergence"] = {
-                "total_forecast": round(total_f, 2),
-                "total_actual": round(total_a, 2),
-                "divergence_pct": round(divergence_pct, 2),
-                "direction": "overcast" if divergence_pct > 0 else "undercast" if divergence_pct < 0 else "aligned",
-            }
-
-        # --- Demand spikes ---
-        if "demand_spikes" in all_patterns:
-            mean_a = sum(actuals) / n if n else 0
-            std_a = math.sqrt(sum((a - mean_a) ** 2 for a in actuals) / n) if n else 0
-            spikes = []
-            if std_a > 0:
-                for i in range(n):
-                    if actuals[i] > mean_a + 2 * std_a:
-                        spikes.append({"date": str(dates[i]), "value": actuals[i]})
-            result["patterns"]["demand_spikes"] = {
-                "count": len(spikes),
-                "spikes": spikes[:5],
-            }
-
-        # --- Promotion-linked ---
-        if "promotion_linked" in all_patterns:
-            promo_df = spark.sql(f"""
-                SELECT
-                    AVG(CASE WHEN holiday_promotion > 0 THEN units_sold ELSE NULL END) AS promo_avg,
-                    AVG(CASE WHEN holiday_promotion = 0 THEN units_sold ELSE NULL END) AS nonpromo_avg
-                FROM {FACT_TABLE}
-                WHERE {where_sql} AND date >= '{cutoff}' AND date <= '{max_date}'
-            """)
-            promo_row = promo_df.collect()
-            if promo_row and promo_row[0]["promo_avg"] is not None:
-                pr = promo_row[0]
-                promo_avg = float(pr["promo_avg"])
-                nonpromo_avg = float(pr["nonpromo_avg"] or 0)
-                uplift_pct = ((promo_avg - nonpromo_avg) / nonpromo_avg * 100) if nonpromo_avg > 0 else 0
-                result["patterns"]["promotion_linked"] = {
-                    "promo_avg_sales": round(promo_avg, 2),
-                    "nonpromo_avg_sales": round(nonpromo_avg, 2),
-                    "uplift_pct": round(uplift_pct, 2),
-                    "significant": abs(uplift_pct) > 10,
-                }
-
-        # --- Inventory-constrained (BRD §12) ---
-        if "inventory_constrained" in all_patterns:
-            stockout_days = sum(1 for r in rows if r["inventory_level"] <= STOCKOUT_THRESHOLD)
-            low_inv_days = sum(1 for r in rows if r["inventory_level"] < r["units_sold"] * 1.5)
-            result["patterns"]["inventory_constrained"] = {
-                "stockout_days": stockout_days,
-                "low_inventory_days": low_inv_days,
-                "total_days": n,
-                "constrained": stockout_days > 0 or low_inv_days > n * 0.3,
-            }
-
-        result["success"] = True
-        return result
-
-
-# ============================================================
-#  7b. HistoricalDeviationService  (BRD §24, FR-04)
-#  Deterministic analytical layer for historical deviation evidence.
-#  The LLM receives the structured evidence and interprets it.
-#  The LLM must NOT calculate historical averages, rolling statistics,
-#  trend changes, anomaly scores, or change points itself.
-# ============================================================
-
-class HistoricalDeviationService:
-    """Deterministic historical deviation analysis (BRD §24, FR-04).
-
-    Evaluates multiple distinct historical patterns and returns structured
-    evidence for each. All thresholds are derived from configurable
-    parameters in config.py -- no hard-coded numeric values from examples.
-    """
-
-    def analyze(
-        self,
-        product_id: str,
-        region: Optional[str] = None,
-        lookback_weeks: Optional[int] = None,
-    ) -> HistoricalDeviationResult:
-        """Run all historical deviation detectors and return structured evidence."""
-        spark = _get_spark()
-
-        # Use config default if not specified
-        lookback = lookback_weeks or HIST_LOOKBACK_WEEKS
-
-        # Build WHERE clause
-        where_parts = [f"product_id = '{product_id}'"]
-        if region:
-            where_parts.append(f"region = '{region}'")
-        where_sql = " AND ".join(where_parts)
-
-        # Determine date range
-        max_row = spark.sql(
-            f"SELECT MAX(date) AS max_d FROM {FACT_TABLE} WHERE {where_sql}"
-        ).collect()
-        if not max_row or not max_row[0]["max_d"]:
-            return HistoricalDeviationResult(
-                product_id=product_id, region=region,
-                data_sufficient=False,
-                insufficiency_reason=f"No data for {product_id}",
+        if not scoped:
+            raise ValueError("No observations at or before the requested cutoff.")
+        limitations = []
+        # Choose one forecast per target/store. Never duplicate an actual across vintages.
+        by_target = defaultdict(list)
+        for r in scoped:
+            by_target[(str(r["date"]), r["store_id"])].append(r)
+        selected = []
+        for batch in by_target.values():
+            if len({r.get("units_sold") for r in batch}) > 1:
+                raise ValueError("Conflicting actuals across forecast vintages.")
+            eligible = [
+                r
+                for r in batch
+                if r.get("forecast_generated_date")
+                and as_date(r["forecast_generated_date"]) <= as_date(r["date"])
+                and (
+                    not plan.vintage
+                    or as_date(r["forecast_generated_date"]) == plan.vintage
+                )
+            ]
+            if not eligible:
+                raise ValueError(
+                    "Forecast vintage is unavailable or later than its target date."
+                )
+            latest = max(as_date(r["forecast_generated_date"]) for r in eligible)
+            chosen = [
+                r for r in eligible if as_date(r["forecast_generated_date"]) == latest
+            ]
+            if len(chosen) != 1:
+                raise ValueError("Duplicate source grain: product/store/date/vintage.")
+            selected.append(chosen[0])
+        selected.sort(key=lambda r: (str(r["date"]), r["store_id"]))
+        valid = [
+            r
+            for r in selected
+            if number(r.get("units_sold")) and number(r.get("demand_forecast"))
+        ]
+        if len(valid) != len(selected):
+            limitations.append(
+                "Null/non-finite actual or forecast: metrics use paired valid observations only."
             )
-        max_date = max_row[0]["max_d"]
-        cutoff = max_date - timedelta(weeks=lookback)
+        if any(r["units_sold"] < 0 for r in valid):
+            limitations.append(
+                "Returns present: WMAPE denominator uses absolute actual units; bias uses signed net actual."
+            )
+        points = weekly(valid)
+        gaps = any(
+            (as_date(b["date"]) - as_date(a["date"])).days > 7
+            for a, b in zip(points, points[1:])
+        )
+        if gaps:
+            limitations.append(
+                "Missing calendar weeks; historical patterns are not certified for this window."
+            )
+        provenance = {
+            "source_view": self.provider.source,
+            "source_version": self.provider.source_version,
+            "feature_version": FEATURE_VERSION,
+            "logic_version": LOGIC_VERSION,
+            "coverage_start": str(min(as_date(r["date"]) for r in selected)),
+            "coverage_end": str(max(as_date(r["date"]) for r in selected)),
+            "requested_start": str(start),
+            "requested_end": str(end),
+            "data_as_of": str(max(as_date(r["date"]) for r in selected)),
+            "vintage_policy": str(plan.vintage)
+            if plan.vintage
+            else "latest issued at/before each target",
+            "calculated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        return selected, valid, points, limitations, provenance, gaps
 
-        # Load historical data (daily granularity)
-        df = spark.sql(f"""
-            SELECT date, product_id, region, units_sold, demand_forecast,
-                   inventory_level, price, discount, holiday_promotion,
-                   weather_condition, seasonality, competitor_pricing
-            FROM {FACT_TABLE}
-            WHERE {where_sql} AND date >= '{cutoff}' AND date <= '{max_date}'
-            ORDER BY date
-        """)
-        rows = df.collect()
-        n = len(rows)
+    def readiness(self, plan, capability, provenance):
+        """Scoped lookup only. Full certification runs in bootstrap/scheduled maintenance."""
+        matches = [
+            r
+            for r in self.provider.registry
+            if r["product_id"] == plan.product_id
+            and r["region"] == plan.region
+            and r["capability"] == capability
+            and r.get("category") == plan.category
+            and r.get("store_id") == (plan.store_id or "*")
+            and r["source_version"] == self.provider.source_version
+            and str(r["coverage_start"])[:10] <= provenance["coverage_start"]
+            and str(r["coverage_end"])[:10] >= provenance["coverage_end"]
+        ]
+        if not matches:
+            return "NOT_TESTABLE"
+        row = matches[-1]
+        if row["validation"] == "FAIL":
+            return "BLOCKED"
+        validated = datetime.fromisoformat(
+            str(row["validated_at"]).replace("Z", "+00:00")
+        )
+        if validated.tzinfo is None:
+            validated = validated.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) - validated > timedelta(days=7):
+            return "STALE"
+        return row["status"]
 
-        if n < HIST_MIN_OBSERVATIONS:
-            return HistoricalDeviationResult(
-                product_id=product_id, region=region,
-                observations=n,
-                period={"start": str(rows[0]["date"]) if rows else None,
-                        "end": str(rows[-1]["date"]) if rows else None},
-                data_sufficient=False,
-                insufficiency_reason=(
-                    f"Insufficient observations ({n}) for deviation analysis; "
-                    f"minimum {HIST_MIN_OBSERVATIONS} required"
+    def execute(self, plan, principal):
+        selected, rows, points, limits, source, gaps = self.prepare(plan, principal)
+        base = {
+            "entity": {
+                "product_id": plan.product_id,
+                "region": plan.region,
+                "store_id": plan.store_id,
+                "category": plan.category,
+                "channel": plan.channel,
+                "fiscal_period": plan.fiscal_period,
+            },
+            "period": {
+                "start": source["coverage_start"],
+                "end": source["coverage_end"],
+            },
+            "provenance": source,
+            "limitations": limits,
+            "data_quality": {
+                "status": "PARTIAL" if limits else "SUFFICIENT",
+                "observations": len(selected),
+                "paired_valid": len(rows),
+                "weeks": len(points),
+                "gaps": gaps,
+            },
+        }
+        if plan.tool == "get_inventory_context":
+            base.update(self.inventory(selected, plan.as_of or plan.end or self.today))
+            base["period"] = {
+                "start": source["requested_start"],
+                "end": source["requested_end"],
+            }
+        elif plan.tool == "get_revenue_context":
+            base.update(self.revenue(selected, plan.revenue_type))
+            if plan.include_trend:
+                by_week = defaultdict(list)
+                for row in selected:
+                    day = as_date(row["date"])
+                    by_week[day - timedelta(days=day.weekday())].append(row)
+                trend = [
+                    {
+                        "week": str(day),
+                        "net_revenue": self.revenue(batch)["net_revenue"],
+                    }
+                    for day, batch in sorted(by_week.items())
+                ]
+                base["trend"] = trend[-12:]
+                values = [r["net_revenue"] for r in trend]
+                half = len(values) // 2
+                base["revenue_change_pct"] = (
+                    rounded(change(mean(values[:half]), mean(values[half:])))
+                    if half
+                    else None
+                )
+                base["comparison_definition"] = (
+                    "Change in mean observed weekly net revenue: earlier half versus recent half."
+                )
+        elif plan.tool == "analyze_historical_pattern":
+            base["patterns"] = self.patterns(points)
+        elif plan.tool == "run_forecast_rca":
+            hyps = plan.hypotheses or list(MIN_WEEKS)
+            base["metrics"] = self.forecast(rows)
+            base["hypotheses"] = [
+                self.hypothesis(h, rows, points, plan, source, gaps, bool(limits))
+                for h in hyps
+            ]
+            base["confidence"] = (
+                "MEDIUM"
+                if any(h["status"] == "SUPPORTED" for h in base["hypotheses"])
+                and not limits
+                else "LOW"
+            )
+            base["recommendations"] = [
+                "Validate supported associations with the planning/data owner before intervention."
+            ]
+            limits.append(
+                "Associations do not establish causality; observed sales may be inventory-censored demand."
+            )
+        elif plan.tool == "get_forecast_context":
+            base["metrics"] = self.forecast(rows)
+            if not plan.include_summary:
+                for key in ("actual", "forecast", "signed_error", "absolute_error"):
+                    base["metrics"].pop(key, None)
+            if not plan.include_accuracy:
+                base["metrics"].pop("wmape_pct", None)
+                base["metrics"].pop("accuracy_pct", None)
+            if not plan.include_bias:
+                base["metrics"].pop("bias_pct", None)
+            if plan.include_history:
+                base["history"] = points[
+                    -12:
+                ]  # aggregated weeks, never transaction history
+            if plan.include_trend:
+                base["patterns"] = self.patterns(points)
+        else:
+            raise ValueError(
+                "Scenario comparisons require authorized persisted state, not source rows."
+            )
+        if plan.comparison_region or plan.comparison_start:
+            # Explicit comparison scopes are independently authorized. Recursive
+            # requests clear comparison fields, so this is at most two bounded
+            # additional deterministic reads, never a model/tool loop.
+            comparisons = {}
+            for label, updates in [
+                ("region", {"region": plan.comparison_region}),
+                (
+                    "period",
+                    {
+                        "start": plan.comparison_start,
+                        "end": plan.comparison_end,
+                        "as_of": None,
+                        "fiscal_period": None,
+                    },
                 ),
-            )
-
-        # Extract time series
-        actuals = [float(r["units_sold"]) for r in rows]
-        forecasts = [float(r["demand_forecast"]) for r in rows]
-        dates = [r["date"] for r in rows]
-        promotions = [float(r["holiday_promotion"] or 0) for r in rows]
-        prices = [float(r["price"] or 0) for r in rows]
-        discounts = [float(r["discount"] or 0) for r in rows]
-
-        # Split into historical baseline and recent windows
-        recent_days = HIST_RECENT_WEEKS * 7
-        baseline_days = HIST_BASELINE_WEEKS * 7
-
-        # Ensure we have enough data for both windows
-        if n < recent_days + baseline_days:
-            # Fallback: split at midpoint
-            split_idx = n // 2
-        else:
-            split_idx = n - recent_days
-
-        hist_actuals = actuals[:split_idx]
-        recent_actuals = actuals[split_idx:]
-        hist_forecasts = forecasts[:split_idx]
-        recent_forecasts = forecasts[split_idx:]
-        hist_dates = dates[:split_idx]
-        recent_dates = dates[split_idx:]
-
-        deviation_evidence: List[HistoricalDeviationEvidence] = []
-
-        # --- 1. Historical level shift (Example 1) ---
-        deviation_evidence.append(
-            self._detect_level_shift(hist_actuals, recent_actuals, hist_dates, recent_dates)
-        )
-
-        # --- 2. Temporary historical spike (Example 2) ---
-        deviation_evidence.append(
-            self._detect_temporary_spike(actuals, dates, promotions, prices, discounts)
-        )
-
-        # --- 3. Persistent trend change (Example 3) ---
-        deviation_evidence.append(
-            self._detect_trend_change(hist_actuals, recent_actuals, hist_dates, recent_dates)
-        )
-
-        # --- 4. Persistent forecast bias (Example 4) ---
-        deviation_evidence.append(
-            self._detect_persistent_bias(actuals, forecasts, dates)
-        )
-
-        # --- 5. Forecast anchored to outdated level (Example 5) ---
-        deviation_evidence.append(
-            self._detect_forecast_anchoring(
-                hist_actuals, recent_actuals, recent_forecasts, hist_dates, recent_dates
-            )
-        )
-
-        # --- 6. Seasonality check (Example 6) ---
-        deviation_evidence.append(
-            self._detect_seasonality(spark, product_id, region, where_sql, max_date, actuals, dates)
-        )
-
-        return HistoricalDeviationResult(
-            product_id=product_id,
-            region=region,
-            period={"start": str(dates[0]), "end": str(dates[-1]), "lookback_weeks": lookback},
-            observations=n,
-            deviation_evidence=deviation_evidence,
-            data_sufficient=True,
-        )
-
-    # ------------------------------------------------------------------
-    #  Pattern 1: Historical Level Shift (Example 1)
-    #  Detects persistent level shift between historical and recent periods.
-    # ------------------------------------------------------------------
-    def _detect_level_shift(
-        self,
-        hist_actuals: List[float],
-        recent_actuals: List[float],
-        hist_dates: List,
-        recent_dates: List,
-    ) -> HistoricalDeviationEvidence:
-        if not hist_actuals or not recent_actuals:
-            return HistoricalDeviationEvidence(
-                hypothesis=HYPOTHESIS_HIST_LEVEL_SHIFT,
-                status="NOT_TESTABLE",
-                confidence="LOW",
-                evidence={"reason": "Insufficient data for level shift analysis"},
-            )
-
-        hist_avg = sum(hist_actuals) / len(hist_actuals)
-        recent_avg = sum(recent_actuals) / len(recent_actuals)
-        change_pct = ((recent_avg - hist_avg) / hist_avg * 100) if hist_avg > 0 else 0.0
-        direction = "DOWN" if change_pct < -HIST_LEVEL_SHIFT_MIN_PCT else "UP" if change_pct > HIST_LEVEL_SHIFT_MIN_PCT else "STABLE"
-        detected = abs(change_pct) >= HIST_LEVEL_SHIFT_MIN_PCT
-
-        return HistoricalDeviationEvidence(
-            hypothesis=HYPOTHESIS_HIST_LEVEL_SHIFT,
-            status="SUPPORTED" if detected else "NOT_SUPPORTED",
-            evidence={
-                "historical_level_shift": detected,
-                "direction": direction,
-                "historical_avg": round(hist_avg, 2),
-                "recent_avg": round(recent_avg, 2),
-                "change_pct": round(change_pct, 2),
-            },
-            comparison_periods={
-                "historical": f"{hist_dates[0]} to {hist_dates[-1]}",
-                "recent": f"{recent_dates[0]} to {recent_dates[-1]}",
-            },
-            detected_change={
-                "direction": direction,
-                "change_pct": round(change_pct, 2),
-            } if detected else None,
-            confidence="HIGH" if abs(change_pct) > HIST_LEVEL_SHIFT_MIN_PCT * 2 else "MEDIUM" if detected else "LOW",
-            provenance="deterministic_analytical_layer",
-        )
-
-    # ------------------------------------------------------------------
-    #  Pattern 2: Temporary Historical Spike (Example 2)
-    #  Detects abnormal spike, measures magnitude, duration, return to baseline.
-    # ------------------------------------------------------------------
-    def _detect_temporary_spike(
-        self,
-        actuals: List[float],
-        dates: List,
-        promotions: List[float],
-        prices: List[float],
-        discounts: List[float],
-    ) -> HistoricalDeviationEvidence:
-        n = len(actuals)
-        if n < 4:
-            return HistoricalDeviationEvidence(
-                hypothesis=HYPOTHESIS_HIST_TEMPORARY_SPIKE,
-                status="NOT_TESTABLE",
-                confidence="LOW",
-                evidence={"reason": "Insufficient data for spike detection"},
-            )
-
-        mean_a = sum(actuals) / n
-        std_a = math.sqrt(sum((a - mean_a) ** 2 for a in actuals) / n)
-
-        if std_a == 0:
-            return HistoricalDeviationEvidence(
-                hypothesis=HYPOTHESIS_HIST_TEMPORARY_SPIKE,
-                status="NOT_SUPPORTED",
-                confidence="LOW",
-                evidence={"reason": "No variance in data; spikes not detectable"},
-            )
-
-        spike_threshold = mean_a + HIST_SPIKE_THRESHOLD_STD * std_a
-
-        # Find spikes
-        spike_indices = [i for i in range(n) if actuals[i] > spike_threshold]
-
-        if not spike_indices:
-            return HistoricalDeviationEvidence(
-                hypothesis=HYPOTHESIS_HIST_TEMPORARY_SPIKE,
-                status="NOT_SUPPORTED",
-                confidence="LOW",
-                evidence={"temporary_spike_detected": False, "reason": "No values exceed spike threshold"},
-            )
-
-        # Analyze the most significant spike
-        spike_idx = max(spike_indices, key=lambda i: actuals[i])
-        spike_value = actuals[spike_idx]
-
-        # Baseline = mean of surrounding non-spike values
-        non_spike = [actuals[i] for i in range(n) if i not in spike_indices]
-        baseline_avg = sum(non_spike) / len(non_spike) if non_spike else mean_a
-        uplift_pct = ((spike_value - baseline_avg) / baseline_avg * 100) if baseline_avg > 0 else 0.0
-
-        # Duration: count consecutive spike periods
-        duration = 1
-        for i in range(spike_idx + 1, n):
-            if actuals[i] > spike_threshold:
-                duration += 1
-            else:
-                break
-
-        # Return to baseline: check if values after spike return to near baseline
-        post_spike_start = spike_idx + duration
-        post_spike_vals = actuals[post_spike_start:post_spike_start + HIST_ROLLING_BIAS_WINDOW]
-        if post_spike_vals:
-            post_avg = sum(post_spike_vals) / len(post_spike_vals)
-            returned = abs(post_avg - baseline_avg) / baseline_avg * 100 < HIST_LEVEL_SHIFT_MIN_PCT if baseline_avg > 0 else True
-        else:
-            returned = True
-
-        # Check for business event overlap
-        business_event = None
-        if promotions[spike_idx] > 0:
-            business_event = "PROMOTION"
-        elif discounts[spike_idx] > 0 and discounts[spike_idx] != min(d for d in discounts if d >= 0):
-            business_event = "DISCOUNT_CHANGE"
-
-        detected = uplift_pct >= HIST_SPIKE_MIN_UPLIFT_PCT
-
-        return HistoricalDeviationEvidence(
-            hypothesis=HYPOTHESIS_HIST_TEMPORARY_SPIKE,
-            status="SUPPORTED" if detected else "NOT_SUPPORTED",
-            evidence={
-                "temporary_spike_detected": detected,
-                "spike_period": str(dates[spike_idx]),
-                "baseline_avg": round(baseline_avg, 2),
-                "spike_value": round(spike_value, 2),
-                "spike_uplift_pct": round(uplift_pct, 2),
-                "duration_periods": duration,
-                "returned_to_baseline": returned,
-            },
-            comparison_periods={
-                "spike_date": str(dates[spike_idx]),
-                "baseline_period": f"{dates[0]} to {dates[-1]}",
-            },
-            detected_change={
-                "spike_value": round(spike_value, 2),
-                "uplift_pct": round(uplift_pct, 2),
-                "returned_to_baseline": returned,
-            } if detected else None,
-            business_event=business_event,
-            confidence="HIGH" if detected and returned else "MEDIUM" if detected else "LOW",
-            provenance="deterministic_analytical_layer",
-        )
-
-    # ------------------------------------------------------------------
-    #  Pattern 3: Persistent Trend Change (Example 3)
-    #  Estimates historical and recent trends, detects direction reversal.
-    # ------------------------------------------------------------------
-    def _detect_trend_change(
-        self,
-        hist_actuals: List[float],
-        recent_actuals: List[float],
-        hist_dates: List,
-        recent_dates: List,
-    ) -> HistoricalDeviationEvidence:
-        if len(hist_actuals) < 4 or len(recent_actuals) < 2:
-            return HistoricalDeviationEvidence(
-                hypothesis=HYPOTHESIS_HIST_TREND_CHANGE,
-                status="NOT_TESTABLE",
-                confidence="LOW",
-                evidence={"reason": "Insufficient data for trend change analysis"},
-            )
-
-        hist_slope = self._linear_slope(hist_actuals)
-        recent_slope = self._linear_slope(recent_actuals)
-
-        hist_direction = "UP" if hist_slope > HIST_TREND_REVERSAL_THRESHOLD else "DOWN" if hist_slope < -HIST_TREND_REVERSAL_THRESHOLD else "STABLE"
-        recent_direction = "UP" if recent_slope > HIST_TREND_REVERSAL_THRESHOLD else "DOWN" if recent_slope < -HIST_TREND_REVERSAL_THRESHOLD else "STABLE"
-
-        trend_reversal = (
-            (hist_direction == "UP" and recent_direction == "DOWN") or
-            (hist_direction == "DOWN" and recent_direction == "UP")
-        )
-
-        slope_ratio = abs(recent_slope / hist_slope) if abs(hist_slope) > 0.001 else float('inf')
-        significant_change = slope_ratio > HIST_TREND_MIN_SLOPE_RATIO or trend_reversal
-
-        detected = trend_reversal or significant_change
-
-        return HistoricalDeviationEvidence(
-            hypothesis=HYPOTHESIS_HIST_TREND_CHANGE,
-            status="SUPPORTED" if detected else "NOT_SUPPORTED",
-            evidence={
-                "trend_change_detected": detected,
-                "historical_trend": hist_direction,
-                "recent_trend": recent_direction,
-                "trend_reversal": trend_reversal,
-                "historical_slope": round(hist_slope, 4),
-                "recent_slope": round(recent_slope, 4),
-                "slope_ratio": round(slope_ratio, 4) if slope_ratio != float('inf') else None,
-            },
-            comparison_periods={
-                "historical": f"{hist_dates[0]} to {hist_dates[-1]}",
-                "recent": f"{recent_dates[0]} to {recent_dates[-1]}",
-            },
-            detected_change={
-                "historical_trend": hist_direction,
-                "recent_trend": recent_direction,
-                "trend_reversal": trend_reversal,
-            } if detected else None,
-            confidence="HIGH" if trend_reversal else "MEDIUM" if detected else "LOW",
-            provenance="deterministic_analytical_layer",
-        )
-
-    # ------------------------------------------------------------------
-    #  Pattern 4: Persistent Forecast Bias (Example 4)
-    #  Per-period forecast error/bias, rolling bias, persistence, direction.
-    # ------------------------------------------------------------------
-    def _detect_persistent_bias(
-        self,
-        actuals: List[float],
-        forecasts: List[float],
-        dates: List,
-    ) -> HistoricalDeviationEvidence:
-        n = len(actuals)
-        if n < 4:
-            return HistoricalDeviationEvidence(
-                hypothesis=HYPOTHESIS_HIST_PERSISTENT_BIAS,
-                status="NOT_TESTABLE",
-                confidence="LOW",
-                evidence={"reason": "Insufficient data for bias persistence analysis"},
-            )
-
-        # Per-period bias %
-        per_period_bias = []
-        for i in range(n):
-            if actuals[i] > 0:
-                bias_pct = (forecasts[i] - actuals[i]) / actuals[i] * 100
-            else:
-                bias_pct = 0.0
-            per_period_bias.append(bias_pct)
-
-        # Proportion of periods with positive bias (over-forecast)
-        positive_periods = sum(1 for b in per_period_bias if b > HIST_BIAS_MIN_PCT)
-        negative_periods = sum(1 for b in per_period_bias if b < -HIST_BIAS_MIN_PCT)
-        positive_pct = (positive_periods / n * 100) if n > 0 else 0
-        negative_pct = (negative_periods / n * 100) if n > 0 else 0
-
-        # Determine dominant bias direction
-        if positive_pct >= HIST_PERSISTENCE_MIN_RATIO * 100:
-            persistent_direction = "OVER"
-            persistent = True
-        elif negative_pct >= HIST_PERSISTENCE_MIN_RATIO * 100:
-            persistent_direction = "UNDER"
-            persistent = True
-        else:
-            persistent_direction = "MIXED"
-            persistent = False
-
-        # Rolling bias direction (increasing, decreasing, or stable)
-        window = min(HIST_ROLLING_BIAS_WINDOW, n)
-        rolling_biases = []
-        for i in range(window, n + 1):
-            w_biases = per_period_bias[i - window:i]
-            rolling_biases.append(sum(w_biases) / len(w_biases))
-
-        if len(rolling_biases) >= 2:
-            first_rb = rolling_biases[0]
-            last_rb = rolling_biases[-1]
-            rb_diff = last_rb - first_rb
-            if rb_diff > HIST_BIAS_MIN_PCT:
-                rolling_direction = "INCREASING"
-            elif rb_diff < -HIST_BIAS_MIN_PCT:
-                rolling_direction = "DECREASING"
-            else:
-                rolling_direction = "STABLE"
-        else:
-            rolling_direction = "STABLE"
-
-        # Check for recent one-off deviation vs persistent pattern
-        if rolling_biases:
-            recent_bias = per_period_bias[-1]
-            avg_rolling = sum(rolling_biases) / len(rolling_biases)
-            one_off_deviation = abs(recent_bias - avg_rolling) > abs(avg_rolling) * 2 if avg_rolling != 0 else False
-        else:
-            one_off_deviation = False
-
-        detected = persistent and not one_off_deviation
-
-        return HistoricalDeviationEvidence(
-            hypothesis=HYPOTHESIS_HIST_PERSISTENT_BIAS,
-            status="SUPPORTED" if detected else "NOT_SUPPORTED",
-            evidence={
-                "positive_bias_periods_pct": round(positive_pct, 2),
-                "negative_bias_periods_pct": round(negative_pct, 2),
-                "rolling_bias_direction": rolling_direction,
-                "persistent_overforecast": persistent and persistent_direction == "OVER",
-                "persistent_underforecast": persistent and persistent_direction == "UNDER",
-                "persistent": persistent,
-                "one_off_deviation": one_off_deviation,
-                "bias_direction": persistent_direction,
-                "per_period_bias": [round(b, 2) for b in per_period_bias],
-                "rolling_bias_first": round(rolling_biases[0], 2) if rolling_biases else None,
-                "rolling_bias_last": round(rolling_biases[-1], 2) if rolling_biases else None,
-            },
-            comparison_periods={
-                "first_period": str(dates[0]),
-                "last_period": str(dates[-1]),
-            },
-            detected_change={
-                "direction": persistent_direction,
-                "rolling_direction": rolling_direction,
-                "persistent": persistent,
-            } if detected else None,
-            confidence="HIGH" if persistent and rolling_direction != "STABLE" else "MEDIUM" if detected else "LOW",
-            provenance="deterministic_analytical_layer",
-        )
-
-    # ------------------------------------------------------------------
-    #  Pattern 5: Forecast Anchored to Outdated Level (Example 5)
-    #  Compares forecast level to recent vs historical demand levels.
-    # ------------------------------------------------------------------
-    def _detect_forecast_anchoring(
-        self,
-        hist_actuals: List[float],
-        recent_actuals: List[float],
-        recent_forecasts: List[float],
-        hist_dates: List,
-        recent_dates: List,
-    ) -> HistoricalDeviationEvidence:
-        if not hist_actuals or not recent_actuals or not recent_forecasts:
-            return HistoricalDeviationEvidence(
-                hypothesis=HYPOTHESIS_HIST_FORECAST_ANCHORING,
-                status="NOT_TESTABLE",
-                confidence="LOW",
-                evidence={"reason": "Insufficient data for anchoring analysis"},
-            )
-
-        hist_avg = sum(hist_actuals) / len(hist_actuals)
-        recent_avg = sum(recent_actuals) / len(recent_actuals)
-        forecast_avg = sum(recent_forecasts) / len(recent_forecasts)
-
-        # Distance from forecast to each level (as % of that level)
-        dist_to_hist = abs(forecast_avg - hist_avg) / hist_avg * 100 if hist_avg > 0 else 0
-        dist_to_recent = abs(forecast_avg - recent_avg) / recent_avg * 100 if recent_avg > 0 else 0
-
-        # Forecast is anchored to historical if it's materially closer to
-        # historical level than recent level
-        anchored_to_historical = (
-            dist_to_hist < dist_to_recent and
-            dist_to_recent >= HIST_FORECAST_ANCHOR_PCT
-        )
-
-        # Symmetric: also detect under-forecasting anchoring (Example 8)
-        recent_above_hist = recent_avg > hist_avg * (1 + HIST_LEVEL_SHIFT_MIN_PCT / 100)
-        recent_below_hist = recent_avg < hist_avg * (1 - HIST_LEVEL_SHIFT_MIN_PCT / 100)
-
-        direction = None
-        if recent_below_hist and anchored_to_historical:
-            direction = "OVER_FORECAST_ANCHORED_HIGH"
-        elif recent_above_hist and anchored_to_historical:
-            direction = "UNDER_FORECAST_ANCHORED_LOW"
-        elif anchored_to_historical:
-            direction = "ANCHORED_TO_HISTORICAL"
-
-        return HistoricalDeviationEvidence(
-            hypothesis=HYPOTHESIS_HIST_FORECAST_ANCHORING,
-            status="SUPPORTED" if anchored_to_historical else "NOT_SUPPORTED",
-            evidence={
-                "historical_avg": round(hist_avg, 2),
-                "recent_avg": round(recent_avg, 2),
-                "forecast_avg": round(forecast_avg, 2),
-                "forecast_distance_to_historical_pct": round(dist_to_hist, 2),
-                "forecast_distance_to_recent_pct": round(dist_to_recent, 2),
-                "forecast_closer_to_historical": dist_to_hist < dist_to_recent,
-                "anchored_to_outdated_level": anchored_to_historical,
-                "anchoring_direction": direction,
-                "demand_shift_direction": "DOWN" if recent_below_hist else "UP" if recent_above_hist else "STABLE",
-            },
-            comparison_periods={
-                "historical": f"{hist_dates[0]} to {hist_dates[-1]}",
-                "recent": f"{recent_dates[0]} to {recent_dates[-1]}",
-            },
-            detected_change={
-                "forecast_closer_to_historical": True,
-                "demand_shifted": recent_below_hist or recent_above_hist,
-                "direction": direction,
-            } if anchored_to_historical else None,
-            confidence="HIGH" if anchored_to_historical and (recent_below_hist or recent_above_hist) else "MEDIUM" if anchored_to_historical else "LOW",
-            provenance="deterministic_analytical_layer",
-        )
-
-    # ------------------------------------------------------------------
-    #  Pattern 6: Seasonality Check (Example 6)
-    #  Checks if observed deviation is consistent with recurring seasonal patterns.
-    # ------------------------------------------------------------------
-    def _detect_seasonality(
-        self,
-        spark,
-        product_id: str,
-        region: Optional[str],
-        where_sql: str,
-        max_date,
-        current_actuals: List[float],
-        current_dates: List,
-    ) -> HistoricalDeviationEvidence:
-        # Try to load data from prior year(s) for seasonal comparison
-        lookback_days = HIST_SEASONALITY_LOOKBACK_YEARS * 365
-        seasonal_cutoff = max_date - timedelta(days=lookback_days)
-
-        try:
-            seasonal_df = spark.sql(f"""
-                SELECT date, units_sold, demand_forecast, seasonality
-                FROM {FACT_TABLE}
-                WHERE {where_sql} AND date >= '{seasonal_cutoff}' AND date <= '{max_date}'
-                ORDER BY date
-            """)
-            seasonal_rows = seasonal_df.collect()
-        except Exception:
-            seasonal_rows = []
-
-        if len(seasonal_rows) < HIST_MIN_OBSERVATIONS * 2:
-            return HistoricalDeviationEvidence(
-                hypothesis=HYPOTHESIS_HIST_SEASONALITY,
-                status="NOT_TESTABLE",
-                confidence="LOW",
-                evidence={"reason": "Insufficient historical data for seasonal comparison"},
-            )
-
-        # Group by seasonality label and compute average demand
-        seasonal_groups: Dict[str, List[float]] = {}
-        for r in seasonal_rows:
-            s = r["seasonality"] or "Unknown"
-            if s not in seasonal_groups:
-                seasonal_groups[s] = []
-            seasonal_groups[s].append(float(r["units_sold"]))
-
-        # Current period seasonal labels
-        current_seasonal_labels = set()
-        current_seasonal_df = spark.sql(f"""
-            SELECT DISTINCT seasonality
-            FROM {FACT_TABLE}
-            WHERE {where_sql} AND date >= '{current_dates[0]}' AND date <= '{current_dates[-1]}'
-        """)
-        for r in current_seasonal_df.collect():
-            current_seasonal_labels.add(r["seasonality"])
-
-        # Check if current period's seasonal label exists in prior years
-        recurring_seasons = []
-        for label in current_seasonal_labels:
-            if label in seasonal_groups and len(seasonal_groups[label]) >= HIST_SEASONALITY_MIN_RECURRENCE:
-                recurring_seasons.append(label)
-
-        # Compare current period average with seasonal average for matching labels
-        current_avg = sum(current_actuals) / len(current_actuals) if current_actuals else 0
-        seasonal_avg_for_current = None
-        for label in current_seasonal_labels:
-            if label in seasonal_groups:
-                vals = seasonal_groups[label]
-                seasonal_avg_for_current = sum(vals) / len(vals)
-                break
-
-        if seasonal_avg_for_current is not None and seasonal_avg_for_current > 0:
-            deviation_from_seasonal = ((current_avg - seasonal_avg_for_current) / seasonal_avg_for_current * 100)
-            is_seasonal = abs(deviation_from_seasonal) < HIST_LEVEL_SHIFT_MIN_PCT
-        else:
-            deviation_from_seasonal = None
-            is_seasonal = False
-
-        return HistoricalDeviationEvidence(
-            hypothesis=HYPOTHESIS_HIST_SEASONALITY,
-            status="SUPPORTED" if is_seasonal else "NOT_SUPPORTED",
-            evidence={
-                "is_seasonal_pattern": is_seasonal,
-                "recurring_seasons": recurring_seasons,
-                "current_seasonal_labels": list(current_seasonal_labels),
-                "current_avg": round(current_avg, 2),
-                "seasonal_avg_for_current": round(seasonal_avg_for_current, 2) if seasonal_avg_for_current is not None else None,
-                "deviation_from_seasonal_pct": round(deviation_from_seasonal, 2) if deviation_from_seasonal is not None else None,
-                "seasonal_groups": {k: round(sum(v) / len(v), 2) for k, v in seasonal_groups.items()},
-            },
-            comparison_periods={
-                "current": f"{current_dates[0]} to {current_dates[-1]}",
-                "seasonal_lookback": f"{seasonal_cutoff} to {max_date}",
-            },
-            detected_change={
-                "is_seasonal": is_seasonal,
-                "deviation_from_seasonal_pct": round(deviation_from_seasonal, 2) if deviation_from_seasonal is not None else None,
-            } if recurring_seasons else None,
-            confidence="MEDIUM" if recurring_seasons else "LOW",
-            provenance="deterministic_analytical_layer",
-        )
-
-    # ------------------------------------------------------------------
-    #  Utility: Linear regression slope
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _linear_slope(values: List[float]) -> float:
-        """Compute the slope of a simple linear regression on the values."""
-        n = len(values)
-        if n < 2:
-            return 0.0
-        x_mean = sum(range(n)) / n
-        y_mean = sum(values) / n
-        num = sum((i - x_mean) * (values[i] - y_mean) for i in range(n))
-        den = sum((i - x_mean) ** 2 for i in range(n))
-        return num / den if den != 0 else 0.0
-
-
-# ============================================================
-#  8. ForecastRCAService  (BRD §9, FR-05/06/07, §25, §12)
-# ============================================================
-
-class ForecastRCAService:
-    """Deterministic RCA evidence-package generator (BRD §25)."""
-
-    def run_rca(
-        self,
-        product_id: str,
-        region: Optional[str] = None,
-        lookback_weeks: int = 12,
-        hypotheses: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
-        spark = _get_spark()
-
-        # Gather data
-        where_parts = [f"product_id = '{product_id}'"]
-        if region:
-            where_parts.append(f"region = '{region}'")
-        where_sql = " AND ".join(where_parts)
-
-        max_row = spark.sql(f"SELECT MAX(date) AS max_d FROM {FACT_TABLE} WHERE {where_sql}").collect()
-        if not max_row or not max_row[0]["max_d"]:
-            return {
-                "success": False,
-                "error": f"No data for product {product_id}" + (f" in {region}" if region else ""),
-            }
-        max_date = max_row[0]["max_d"]
-        cutoff = max_date - timedelta(weeks=lookback_weeks)
-
-        df = spark.sql(f"""
-            SELECT date, product_id, region, units_sold, demand_forecast,
-                   inventory_level, price, discount, holiday_promotion,
-                   weather_condition, seasonality, competitor_pricing
-            FROM {FACT_TABLE}
-            WHERE {where_sql} AND date >= '{cutoff}' AND date <= '{max_date}'
-            ORDER BY date
-        """)
-        rows = df.collect()
-        n = len(rows)
-
-        # --- Data quality assessment ---
-        dq = self._assess_data_quality(rows, n, lookback_weeks)
-
-        if n < 4:
-            return {
-                "success": False,
-                "error": "Insufficient history for RCA",
-                "data_quality": dq,
-            }
-
-        actuals = [r["units_sold"] for r in rows]
-        forecasts = [r["demand_forecast"] for r in rows]
-        dates = [r["date"] for r in rows]
-
-        observations: List[str] = []
-        evidence: List[Dict] = []
-        hyps: List[Dict] = []
-        recommendations: List[str] = []
-
-        # --- Observed facts ---
-        total_f = sum(forecasts)
-        total_a = sum(actuals)
-        total_abs_err = sum(abs(forecasts[i] - actuals[i]) for i in range(n))
-        wmape = (total_abs_err / total_a * 100) if total_a > 0 else None
-        bias_pct = ((total_f - total_a) / total_a * 100) if total_a > 0 else None
-
-        observations.append(
-            f"{n} observations from {dates[0]} to {dates[-1]}. "
-            f"Total forecast: {total_f}, Total actual: {total_a}."
-        )
-        if wmape is not None:
-            observations.append(f"WMAPE: {round(wmape, 2)}%. Forecast accuracy: {round(100 - wmape, 2)}%.")
-        if bias_pct is not None:
-            direction = "over-forecast" if bias_pct > 0 else "under-forecast"
-            observations.append(f"Bias: {round(bias_pct, 2)}% ({direction}).")
-
-        evidence.append({
-            "evidence_type": "summary_metrics",
-            "description": f"WMAPE={round(wmape or 0, 2)}%, Bias={round(bias_pct or 0, 2)}%",
-            "metric": "wmape",
-            "value": round(wmape or 0, 2),
-            "period": f"{dates[0]} to {dates[-1]}",
-        })
-
-        all_hyps = hypotheses or [
-            HYPOTHESIS_FORECAST_BIAS, HYPOTHESIS_DEMAND_TREND,
-            HYPOTHESIS_PROMOTION, HYPOTHESIS_INVENTORY,
-            HYPOTHESIS_PRICE, HYPOTHESIS_DATA_QUALITY,
-        ]
-
-        # --- H1: Forecast bias ---
-        if HYPOTHESIS_FORECAST_BIAS in all_hyps:
-            if bias_pct is not None and abs(bias_pct) > 10:
-                hyps.append({
-                    "cause": HYPOTHESIS_FORECAST_BIAS,
-                    "evidence": [{
-                        "evidence_type": "bias",
-                        "description": f"Persistent {'over' if bias_pct > 0 else 'under'}-forecast bias of {round(bias_pct, 2)}%",
-                        "metric": "bias_pct",
-                        "value": round(bias_pct, 2),
-                    }],
-                    "strength": "HIGH" if abs(bias_pct) > 25 else "MEDIUM",
-                    "status": HYP_STATUS_SUPPORTED,
-                    "reasoning": f"Bias exceeds 10% threshold at {round(bias_pct, 2)}%",
-                })
-                recommendations.append(
-                    "Review forecast model calibration to address systematic "
-                    f"{'over' if bias_pct > 0 else 'under'}-forecasting."
+            ]:
+                if label == "region" and not plan.comparison_region:
+                    continue
+                if label == "period" and not plan.comparison_start:
+                    continue
+                other = plan.model_copy(
+                    update={
+                        **updates,
+                        "comparison_region": None,
+                        "comparison_start": None,
+                        "comparison_end": None,
+                    }
                 )
-
-        # --- H2: Demand trend shift ---
-        if HYPOTHESIS_DEMAND_TREND in all_hyps:
-            mid = n // 2
-            first_avg = sum(actuals[:mid]) / max(mid, 1)
-            second_avg = sum(actuals[mid:]) / max(n - mid, 1)
-            shift_pct = ((second_avg - first_avg) / first_avg * 100) if first_avg > 0 else 0
-            if abs(shift_pct) > 15:
-                hyps.append({
-                    "cause": HYPOTHESIS_DEMAND_TREND,
-                    "evidence": [{
-                        "evidence_type": "trend",
-                        "description": f"Demand {'increased' if shift_pct > 0 else 'decreased'} by {round(shift_pct, 2)}% between first and second half",
-                        "metric": "shift_pct",
-                        "value": round(shift_pct, 2),
-                    }],
-                    "strength": "HIGH" if abs(shift_pct) > 30 else "MEDIUM",
-                    "status": HYP_STATUS_SUPPORTED,
-                    "reasoning": f"Level shift of {round(shift_pct, 2)}% detected",
-                })
-                recommendations.append(
-                    f"Investigate structural demand {'increase' if shift_pct > 0 else 'decrease'} "
-                    "and update baseline forecast assumptions."
-                )
-
-        # --- H3: Promotion effect ---
-        if HYPOTHESIS_PROMOTION in all_hyps:
-            promo_rows = [r for r in rows if r["holiday_promotion"] and r["holiday_promotion"] > 0]
-            nonpromo_rows = [r for r in rows if not r["holiday_promotion"] or r["holiday_promotion"] == 0]
-            if promo_rows and nonpromo_rows:
-                promo_avg = sum(r["units_sold"] for r in promo_rows) / len(promo_rows)
-                nonpromo_avg = sum(r["units_sold"] for r in nonpromo_rows) / len(nonpromo_rows)
-                uplift = ((promo_avg - nonpromo_avg) / nonpromo_avg * 100) if nonpromo_avg > 0 else 0
-                if abs(uplift) > 10:
-                    hyps.append({
-                        "cause": HYPOTHESIS_PROMOTION,
-                        "evidence": [{
-                            "evidence_type": "promotion",
-                            "description": f"Promotion periods show {round(uplift, 2)}% difference in sales vs non-promotion",
-                            "metric": "uplift_pct",
-                            "value": round(uplift, 2),
-                        }],
-                        "strength": "HIGH" if abs(uplift) > 30 else "MEDIUM",
-                        "status": HYP_STATUS_SUPPORTED,
-                        "reasoning": f"Promotion uplift of {round(uplift, 2)}% detected",
-                    })
-                    recommendations.append(
-                        "Review promotion calendar alignment with forecast assumptions."
-                    )
-
-        # --- H4: Inventory constraint (BRD §12) ---
-        if HYPOTHESIS_INVENTORY in all_hyps:
-            stockout_days = sum(1 for r in rows if r["inventory_level"] <= STOCKOUT_THRESHOLD)
-            low_inv_days = sum(1 for r in rows if r["inventory_level"] < r["units_sold"] * 1.5)
-            if stockout_days > 0 or low_inv_days > n * 0.3:
-                hyps.append({
-                    "cause": HYPOTHESIS_INVENTORY,
-                    "evidence": [{
-                        "evidence_type": "inventory",
-                        "description": f"{stockout_days} stockout days, {low_inv_days} low-inventory days out of {n}",
-                        "metric": "stockout_days",
-                        "value": stockout_days,
-                    }],
-                    "strength": "HIGH" if stockout_days > 3 else "MEDIUM",
-                    "status": HYP_STATUS_SUPPORTED,
-                    "reasoning": "Observed sales may be supply-constrained rather than demand-driven",
-                })
-                recommendations.append(
-                    "Observed sales may be supply-constrained. "
-                    "Do not interpret low sales as demand decline without verifying inventory availability."
-                )
-
-        # --- H5: Price effect ---
-        if HYPOTHESIS_PRICE in all_hyps:
-            prices = [r["price"] for r in rows]
-            if max(prices) != min(prices):
-                price_change = ((max(prices) - min(prices)) / min(prices) * 100) if min(prices) > 0 else 0
-                if abs(price_change) > 10:
-                    hyps.append({
-                        "cause": HYPOTHESIS_PRICE,
-                        "evidence": [{
-                            "evidence_type": "price",
-                            "description": f"Price varied by {round(price_change, 2)}% during the period",
-                            "metric": "price_change_pct",
-                            "value": round(price_change, 2),
-                        }],
-                        "strength": "MEDIUM",
-                        "status": HYP_STATUS_POSSIBLE,
-                        "reasoning": "Price variation may correlate with demand changes",
-                    })
-
-        # --- H6: Data quality ---
-        if HYPOTHESIS_DATA_QUALITY in all_hyps:
-            if dq.data_status != DATA_SUFFICIENT:
-                hyps.append({
-                    "cause": HYPOTHESIS_DATA_QUALITY,
-                    "evidence": [{
-                        "evidence_type": "data_quality",
-                        "description": "; ".join(dq.data_quality_flags) or "Data quality issues detected",
-                        "metric": "data_status",
-                        "value": dq.data_status,
-                    }],
-                    "strength": "LOW",
-                    "status": HYP_STATUS_POSSIBLE,
-                    "reasoning": "Data quality issues may affect RCA reliability",
-                })
-
-        # --- Historical deviation analysis (deterministic) ---
-        # Run the deviation service to produce structured historical evidence.
-        # The LLM interprets this evidence; it does NOT compute these metrics.
-        try:
-            deviation_result = deviation_service.analyze(
-                product_id=product_id,
-                region=region,
-                lookback_weeks=lookback_weeks,
-            )
-            deviation_dict = deviation_result.model_dump()
-
-            # Convert deviation evidence into RCA hypotheses
-            for dev_ev in deviation_result.deviation_evidence:
-                if dev_ev.status in ("SUPPORTED", "VALIDATED"):
-                    hyps.append({
-                        "cause": dev_ev.hypothesis,
-                        "evidence": [{
-                            "evidence_type": "historical_deviation",
-                            "description": (
-                                f"{dev_ev.hypothesis}: {dev_ev.evidence}"
-                            ),
-                            "metric": dev_ev.hypothesis,
-                            "value": dev_ev.evidence,
-                            "period": (
-                                dev_ev.comparison_periods.get("historical", "")
-                                if dev_ev.comparison_periods else ""
-                            ),
-                        }],
-                        "strength": (
-                            "HIGH" if dev_ev.confidence == "HIGH"
-                            else "MEDIUM" if dev_ev.confidence == "MEDIUM"
-                            else "LOW"
-                        ),
-                        "status": dev_ev.status,
-                        "reasoning": (
-                            f"{dev_ev.hypothesis} detected with confidence "
-                            f"{dev_ev.confidence}. Evidence: {dev_ev.evidence}"
-                        ),
-                        "business_event": dev_ev.business_event,
-                        "confidence": dev_ev.confidence,
-                        "provenance": dev_ev.provenance,
-                    })
-                    if dev_ev.business_event:
-                        recommendations.append(
-                            f"Historical deviation '{dev_ev.hypothesis}' overlaps "
-                            f"with business event '{dev_ev.business_event}'. "
-                            f"Treat as supporting evidence, not sole causation."
-                        )
-        except Exception as exc:
-            logger.warning("Historical deviation analysis failed: %s", exc)
-            deviation_dict = None
-            limitations.append("Historical deviation analysis could not be completed.")
-
-        # --- Confidence (includes deviation evidence) ---
-        supported_count = sum(
-            1 for h in hyps
-            if h["status"] in (HYP_STATUS_SUPPORTED, HYP_STATUS_VALIDATED)
-        )
-        if supported_count >= 3:
-            confidence = "HIGH"
-        elif supported_count >= 1:
-            confidence = "MEDIUM"
-        else:
-            confidence = "LOW"
-
-        # --- Limitations ---
-        limitations: List[str] = []
-        if n < 28:
-            limitations.append(f"Only {n} observations; longer history would improve confidence.")
-        if dq.data_status == DATA_PARTIAL:
-            limitations.append("Data is partial; some metrics may be incomplete.")
-        limitations.append("Hypotheses are evidence-based, not causal claims.")
-        limitations.append(
-            "Historical deviation evidence is computed deterministically; "
-            "the LLM interprets but does not calculate these metrics."
-        )
-
-        return {
-            "success": True,
-            "entity": {"product_id": product_id, "region": region},
-            "period": {"start": str(dates[0]), "end": str(dates[-1]), "weeks": lookback_weeks},
-            "data_quality": dq.model_dump() if hasattr(dq, 'model_dump') else dq,
-            "observations": observations,
-            "evidence": evidence,
-            "hypotheses": hyps,
-            "historical_deviation": deviation_dict,
-            "recommendations": recommendations,
-            "confidence": confidence,
-            "limitations": limitations,
-        }
-
-    def _assess_data_quality(
-        self, rows: List, n: int, lookback_weeks: int,
-    ) -> DataQualityStatus:
-        flags: List[str] = []
-        missing: List[str] = []
-
-        if n < 4:
-            flags.append(f"Insufficient observations: {n}")
-        if n < lookback_weeks * 5:  # ~5 days per week
-            flags.append(f"Incomplete coverage: {n} obs vs expected ~{lookback_weeks * 5}")
-
-        null_forecasts = sum(1 for r in rows if r["demand_forecast"] is None)
-        if null_forecasts:
-            missing.append("demand_forecast")
-            flags.append(f"{null_forecasts} null forecast values")
-
-        zero_actuals = sum(1 for r in rows if r["units_sold"] == 0)
-        if zero_actuals > n * 0.5:
-            flags.append(f"{zero_actuals} zero-actual observations")
-
-        duplicate_dates = len(rows) - len(set(r["date"] for r in rows))
-        if duplicate_dates > 0:
-            flags.append(f"{duplicate_dates} duplicate dates")
-
-        status = DATA_SUFFICIENT
-        if len(flags) >= 2:
-            status = DATA_INSUFFICIENT
-        elif len(flags) == 1:
-            status = DATA_PARTIAL
-
-        coverage_start = str(rows[0]["date"]) if rows else None
-        coverage_end = str(rows[-1]["date"]) if rows else None
-
-        return DataQualityStatus(
-            data_status=status,
-            coverage_start=coverage_start,
-            coverage_end=coverage_end,
-            total_observations=n,
-            missing_fields=missing,
-            data_quality_flags=flags,
-        )
-
-
-# ============================================================
-#  9. ScenarioComparisonService  (BRD §17, §18)
-# ============================================================
-
-class ScenarioComparisonService:
-    """Compare baseline vs current/what-if scenario (BRD §17, §18)."""
-
-    def compare(
-        self,
-        baseline_state: Dict[str, Any],
-        current_state: Dict[str, Any],
-        what_if_parameters: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        deltas: Dict[str, Any] = {}
-        for key in set(list(baseline_state.keys()) + list(current_state.keys())):
-            b = baseline_state.get(key)
-            c = current_state.get(key)
-            if isinstance(b, (int, float)) and isinstance(c, (int, float)):
-                deltas[key] = {
-                    "baseline": b,
-                    "current": c,
-                    "delta": round(c - b, 2),
-                    "delta_pct": round(((c - b) / b * 100) if b != 0 else 0, 2),
+                reference = self.execute(other, principal)
+                comparisons[label] = {
+                    "entity": reference["entity"],
+                    "period": reference["period"],
+                    "metrics": reference.get("metrics"),
+                    "net_revenue": reference.get("net_revenue"),
+                    "provenance": reference["provenance"],
                 }
+                if base.get("metrics") and reference.get("metrics"):
+                    comparisons[label]["accuracy_gap_pp"] = (
+                        rounded(
+                            base["metrics"]["accuracy_pct"]
+                            - reference["metrics"]["accuracy_pct"]
+                        )
+                        if number(base["metrics"].get("accuracy_pct"))
+                        and number(reference["metrics"].get("accuracy_pct"))
+                        else None
+                    )
+            base["comparisons"] = comparisons
+        return base
 
+    @staticmethod
+    def forecast(rows):
+        actual = sum(r["units_sold"] for r in rows)
+        forecast = sum(r["demand_forecast"] for r in rows)
+        denominator = sum(abs(r["units_sold"]) for r in rows)
+        error = sum(abs(r["demand_forecast"] - r["units_sold"]) for r in rows)
+        wmape = error / denominator * 100 if denominator else None
         return {
-            "baseline": baseline_state,
-            "current": current_state,
-            "what_if_parameters": what_if_parameters,
-            "deltas": deltas,
-            "summary": self._build_summary(deltas, what_if_parameters),
+            "actual": rounded(actual) if rows else None,
+            "forecast": rounded(forecast) if rows else None,
+            "signed_error": rounded(forecast - actual) if rows else None,
+            "absolute_error": rounded(error) if rows else None,
+            "wmape_pct": rounded(wmape),
+            "accuracy_pct": rounded(100 - wmape) if wmape is not None else None,
+            "bias_pct": rounded((forecast - actual) / actual * 100) if actual else None,
+            "definition": "WMAPE=sum(abs(forecast-actual))/sum(abs(actual)); accuracy=100-WMAPE; units",
         }
 
-    def _build_summary(self, deltas: Dict, what_if: Optional[Dict]) -> str:
-        parts = []
-        if what_if:
-            for k, v in what_if.items():
-                parts.append(f"{k}: {v}")
-        if not deltas:
-            return "No numeric differences detected."
-        for k, d in deltas.items():
-            parts.append(f"{k}: {d['baseline']} → {d['current']} (Δ {d['delta']})")
-        return " | ".join(parts)
+    @staticmethod
+    def inventory(rows, cutoff):
+        # Latest snapshot PER STORE. Summation is allowed across stores, never dates.
+        latest = {}
+        for r in rows:
+            if as_date(r["date"]) <= cutoff:
+                latest[r["store_id"]] = r
+        snapshots = list(latest.values())
+        if not snapshots or any(
+            not number(r.get("inventory_level")) for r in snapshots
+        ):
+            return {
+                "inventory": None,
+                "availability": "UNAVAILABLE",
+                "stockout_days": None,
+            }
+        conflict = any(
+            as_date(r.get("inventory_timestamp")) != as_date(r["date"])
+            for r in snapshots
+        )
+        ages = [(cutoff - as_date(r["date"])).days for r in snapshots]
+        return {
+            "inventory": sum(r["inventory_level"] for r in snapshots),
+            "as_of": str(cutoff),
+            "snapshot_dates": sorted({str(r["date"]) for r in snapshots}),
+            "freshness": "CONFLICT"
+            if conflict
+            else "STALE"
+            if max(ages) > 14
+            else "FRESH",
+            "availability": "PARTIAL"
+            if conflict or min(ages) != max(ages)
+            else "AVAILABLE",
+            "stockout_snapshots": sum(r["inventory_level"] <= 0 for r in snapshots),
+            "stockout_days": None,
+            "definition": "Latest known balance per store at/before cutoff; snapshots do not measure stockout days.",
+        }
 
+    @staticmethod
+    def revenue(rows, convention="net"):
+        currencies = {r.get("currency") for r in rows}
+        gross_valid = all(
+            number(r.get("units_sold")) and number(r.get("price")) and r["price"] >= 0
+            for r in rows
+        )
+        valid = (
+            gross_valid
+            and len(currencies) == 1
+            and None not in currencies
+            and all(
+                number(r.get("discount"))
+                and 0 <= r["discount"] <= 100
+                and r.get("discount_unit") == "percent"
+                for r in rows
+            )
+        )
+        gross = (
+            sum(r["units_sold"] * r["price"] for r in rows)
+            if gross_valid and len(currencies) == 1
+            else None
+        )
+        net = (
+            sum(r["units_sold"] * r["price"] * (1 - r["discount"] / 100) for r in rows)
+            if valid
+            else None
+        )
+        exposure = (
+            sum(
+                (r["demand_forecast"] - r["units_sold"])
+                * r["price"]
+                * (1 - r["discount"] / 100)
+                for r in rows
+            )
+            if valid and all(number(r.get("demand_forecast")) for r in rows)
+            else None
+        )
+        return {
+            "gross_revenue": rounded(gross),
+            "net_revenue": rounded(net),
+            "unit_price": rows[0]["price"]
+            if gross_valid and len({r["price"] for r in rows}) == 1
+            else None,
+            "primary_revenue": rounded(gross if convention == "gross" else net),
+            "revenue_type": convention,
+            "currency": next(iter(currencies)) if len(currencies) == 1 else None,
+            "forecast_revenue_exposure": rounded(exposure),
+            "exposure_definition": "Signed forecast-minus-actual units at observed net unit prices; not a causal loss estimate.",
+            "availability": "AVAILABLE" if valid else "PARTIAL",
+            "definition": "gross=units*unit_price; net=gross*(1-discount/100). Missing/invalid net never falls back to gross.",
+        }
 
-# ============================================================
-# 10. DataQualityService  (BRD §11, §27)
-# ============================================================
+    @staticmethod
+    def patterns(points):
+        if len(points) < 8:
+            return {
+                "status": "NOT_TESTABLE",
+                "reason": "At least 8 complete weekly observations are required.",
+            }
+        values = [p["actual"] for p in points]
+        half = len(points) // 2
+        early, recent = mean(values[:half]), mean(values[half:])
+        shift = change(early, recent)
+        biases = [p["forecast"] - p["actual"] for p in points]
+        weekly_errors = [
+            abs(p["forecast"] - p["actual"]) / abs(p["actual"]) * 100
+            if p["actual"]
+            else None
+            for p in points
+        ]
+        nonzero = [v for v in values if v != 0]
+        avg = mean(values)
+        return {
+            "status": "AVAILABLE",
+            "level_shift_pct": rounded(shift),
+            "trend": "up"
+            if shift is not None and shift > 15
+            else "down"
+            if shift is not None and shift < -15
+            else "stable",
+            "volatility_cv": rounded(statistics.pstdev(values) / abs(avg))
+            if avg
+            else None,
+            "bias_drift_units": rounded(mean(biases[half:]) - mean(biases[:half])),
+            "accuracy_deterioration_pp": rounded(
+                (mean(weekly_errors[half:]) or 0) - (mean(weekly_errors[:half]) or 0)
+            ),
+            "divergence_units": rounded(mean([abs(b) for b in biases])),
+            "spike_or_drop": any(
+                abs(v - (early or 0)) > max(abs(early or 0) * 0.5, 1)
+                for v in values[half:]
+            ),
+            "intermittency_ratio": rounded(1 - len(nonzero) / len(values)),
+        }
 
-class DataQualityService:
-    """Explicit validation for entity, date, and metric exceptions."""
-
-    def check_entity(self, product_id: str, region: Optional[str] = None) -> Dict[str, Any]:
-        spark = _get_spark()
-        df = spark.sql(f"SELECT COUNT(DISTINCT region) AS n_regions FROM {FACT_TABLE} WHERE product_id = '{product_id}'")
-        cnt = df.collect()
-        if not cnt or cnt[0]["n_regions"] == 0:
-            return {"valid": False, "error": f"Unknown product: {product_id}"}
-        return {"valid": True}
-
-    def check_date_range(
-        self, product_id: str,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-    ) -> Dict[str, Any]:
-        spark = _get_spark()
-        df = spark.sql(f"SELECT MIN(date) AS min_d, MAX(date) AS max_d FROM {FACT_TABLE} WHERE product_id = '{product_id}'")
-        row = df.collect()
-        if not row:
-            return {"valid": False, "error": "No data"}
-        min_d = row[0]["min_d"]
-        max_d = row[0]["max_d"]
-        issues = []
-        if start and start < min_d:
-            issues.append(f"Requested start {start} precedes data start {min_d}")
-        if end and end > max_d:
-            issues.append(f"Requested end {end} exceeds data end {max_d}")
-        if start and end and end > date.today():
-            issues.append("Future dates requested for actuals")
-        return {"valid": len(issues) == 0, "issues": issues,
-                "coverage": {"start": str(min_d), "end": str(max_d)}}
-
-    def check_metrics(self, product_id: str, region: Optional[str] = None) -> Dict[str, Any]:
-        spark = _get_spark()
-        where_sql = f"product_id = '{product_id}'"
-        if region:
-            where_sql += f" AND region = '{region}'"
-        df = spark.sql(f"""
-            SELECT
-                SUM(CASE WHEN demand_forecast IS NULL THEN 1 ELSE 0 END) AS null_forecasts,
-                SUM(CASE WHEN units_sold = 0 THEN 1 ELSE 0 END) AS zero_actuals,
-                SUM(CASE WHEN units_sold < 0 THEN 1 ELSE 0 END) AS negative_units,
-                SUM(CASE WHEN inventory_level < 0 THEN 1 ELSE 0 END) AS negative_inventory,
-                SUM(CASE WHEN price <= 0 THEN 1 ELSE 0 END) AS invalid_price,
-                SUM(CASE WHEN discount < 0 OR discount > 100 THEN 1 ELSE 0 END) AS invalid_discount
-            FROM {FACT_TABLE}
-            WHERE {where_sql}
-        """)
-        r = df.collect()[0]
-        issues = []
-        if r["null_forecasts"]:  issues.append(f"{r['null_forecasts']} null forecasts")
-        if r["zero_actuals"]:   issues.append(f"{r['zero_actuals']} zero-actual rows")
-        if r["negative_units"]:  issues.append(f"{r['negative_units']} negative units")
-        if r["negative_inventory"]: issues.append(f"{r['negative_inventory']} negative inventory")
-        if r["invalid_price"]:   issues.append(f"{r['invalid_price']} invalid prices")
-        if r["invalid_discount"]: issues.append(f"{r['invalid_discount']} invalid discounts")
-        return {"valid": len(issues) == 0, "issues": issues}
-
-
-# ============================================================
-#  Service singletons
-# ============================================================
-
-entity_service         = EntityResolutionService()
-conversation_service   = ConversationMemoryService()
-scenario_service       = ScenarioStateService()
-forecast_service       = ForecastService()
-inventory_service      = InventoryService()
-revenue_service        = RevenueService()
-pattern_service        = HistoricalPatternService()
-deviation_service      = HistoricalDeviationService()
-rca_service            = ForecastRCAService()
-comparison_service     = ScenarioComparisonService()
-data_quality_service   = DataQualityService()
+    def hypothesis(self, kind, rows, points, plan, source, gaps, partial):
+        result = {
+            "cause": kind,
+            "status": "NOT_TESTABLE",
+            "strength": "LOW",
+            "evidence": {},
+            "reason": "Required fields, coverage or certification are unavailable.",
+        }
+        ready = self.readiness(plan, kind, source)
+        result["readiness"] = ready
+        if ready in ("BLOCKED", "STALE"):
+            result["reason"] = (
+                f"Capability certification is {ready}; maintenance is required."
+            )
+            return result
+        if (
+            ready not in ("READY", "PARTIAL")
+            or gaps
+            or len(points) < MIN_WEEKS[kind]
+            or not rows
+        ):
+            return result
+        if partial and kind != "quality":
+            result["reason"] = (
+                "Incomplete paired observations prevent a reliable contributor assessment."
+            )
+            return result
+        metric, supported, possible = None, False, False
+        if kind == "bias":
+            metric = self.forecast(rows)["bias_pct"]
+            supported = metric is not None and abs(metric) > 10
+        elif kind == "trend":
+            metric = self.patterns(points).get("level_shift_pct")
+            supported = metric is not None and abs(metric) > 15
+        elif kind == "promotion":
+            if any(r.get("holiday_promotion") is None for r in rows):
+                return result
+            promo = mean([r["units_sold"] for r in rows if r["holiday_promotion"] > 0])
+            normal = mean(
+                [r["units_sold"] for r in rows if r["holiday_promotion"] == 0]
+            )
+            metric = change(normal, promo)
+            if metric is None:
+                return result
+            supported = abs(metric) > 10
+        elif kind == "inventory":
+            if any(not number(r.get("inventory_level")) for r in rows):
+                return result
+            constrained = [r for r in rows if r["inventory_level"] <= 0]
+            normal = [r for r in rows if r["inventory_level"] > 0]
+            metric = {
+                "stockout_snapshots": len(constrained),
+                "sales_change_pct": rounded(
+                    change(
+                        mean([r["units_sold"] for r in normal]),
+                        mean([r["units_sold"] for r in constrained]),
+                    )
+                ),
+            }
+            supported = (
+                bool(constrained)
+                and metric["sales_change_pct"] is not None
+                and metric["sales_change_pct"] < 0
+            )
+        elif kind == "price":
+            prices = [r.get("price") for r in rows]
+            if not all(number(v) and v > 0 for v in prices):
+                return result
+            metric = change(min(prices), max(prices))
+            possible = metric is not None and metric > 10
+        elif kind == "revenue":
+            half = len(rows) // 2
+            a, b = self.revenue(rows[:half]), self.revenue(rows[half:])
+            metric = change(a["net_revenue"], b["net_revenue"])
+            if metric is None:
+                return result
+            supported = metric < -10
+        elif kind == "seasonality":
+            if not all(r.get("seasonality") == "synthetic_26_week" for r in rows):
+                result["reason"] = (
+                    "A validated seasonal cadence and at least two cycles are required."
+                )
+                return result
+            # Two recurrences of a documented 26-week synthetic cycle.
+            values = [p["actual"] for p in points]
+            a, b = values[:-26], values[26:]
+            if len(a) < 26 or not statistics.pstdev(a) or not statistics.pstdev(b):
+                return result
+            metric = statistics.correlation(a, b)
+            supported = metric > 0.7
+        elif kind == "competitor":
+            if any(
+                not number(r.get("competitor_pricing"))
+                or r["competitor_pricing"] <= 0
+                or not number(r.get("price"))
+                for r in rows
+            ):
+                return result
+            cheaper = [
+                r["units_sold"] for r in rows if r["competitor_pricing"] < r["price"]
+            ]
+            other = [
+                r["units_sold"] for r in rows if r["competitor_pricing"] >= r["price"]
+            ]
+            if min(len(cheaper), len(other)) < 4:
+                return result
+            metric = {
+                "sales_change_when_competitor_cheaper_pct": rounded(
+                    change(mean(other), mean(cheaper))
+                )
+            }
+            possible = (
+                metric["sales_change_when_competitor_cheaper_pct"] is not None
+                and abs(metric["sales_change_when_competitor_cheaper_pct"]) > 10
+            )
+        elif kind == "weather":
+            groups = defaultdict(list)
+            for row in rows:
+                if not row.get("weather_condition") or as_date(
+                    row.get("weather_observed_at")
+                ) != as_date(row["date"]):
+                    return result
+                groups[row["weather_condition"]].append(row["units_sold"])
+            if len(groups) < 2 or any(len(values) < 4 for values in groups.values()):
+                return result
+            averages = {key: mean(values) for key, values in groups.items()}
+            maximum = max(averages.values())
+            metric = {
+                "average_sales_by_observed_weather": {
+                    key: rounded(value) for key, value in averages.items()
+                },
+                "spread_pct": rounded(
+                    (maximum - min(averages.values())) / maximum * 100
+                )
+                if maximum
+                else None,
+            }
+            possible = metric["spread_pct"] is not None and metric["spread_pct"] > 10
+        elif kind == "lifecycle":
+            launches = {r.get("launch_date") for r in rows}
+            if len(launches) != 1 or None in launches:
+                return result
+            launch = as_date(next(iter(launches)))
+            if any(as_date(r["date"]) < launch for r in rows):
+                return result
+            age = (max(as_date(r["date"]) for r in rows) - launch).days
+            metric = {
+                "age_days": age,
+                "launch_date": str(launch),
+                "sales_level_shift_pct": self.patterns(points).get("level_shift_pct"),
+            }
+            possible = (
+                age <= 90
+                and metric["sales_level_shift_pct"] is not None
+                and abs(metric["sales_level_shift_pct"]) > 15
+            )
+        elif kind == "mix":
+            stores = {r["store_id"] for r in rows}
+            if len(stores) < 2:
+                return result
+            dates = sorted({as_date(r["date"]) for r in rows})
+            middle = dates[len(dates) // 2]
+            totals = []
+            for is_recent in (False, True):
+                counts = {
+                    store: sum(
+                        r["units_sold"]
+                        for r in rows
+                        if r["store_id"] == store
+                        and ((as_date(r["date"]) >= middle) == is_recent)
+                    )
+                    for store in stores
+                }
+                total = sum(counts.values())
+                if total <= 0 or any(value < 0 for value in counts.values()):
+                    return result
+                totals.append({key: value / total for key, value in counts.items()})
+            shifts = {
+                key: rounded((totals[1][key] - totals[0][key]) * 100)
+                for key in sorted(stores)
+            }
+            variation = sum(abs(totals[1][key] - totals[0][key]) for key in stores) / 2
+            metric = {
+                "store_share_changes_pp": shifts,
+                "total_variation": rounded(variation),
+            }
+            possible = variation > 0.2
+        elif kind == "quality":
+            metric = {"partial": partial}
+            supported = partial
+        else:
+            result["reason"] = (
+                "This contributor has no validated detection contract; no causal inference is made."
+            )
+            return result
+        result.update(
+            status="SUPPORTED"
+            if supported
+            else "POSSIBLE"
+            if possible
+            else "NOT_SUPPORTED",
+            strength="MEDIUM" if supported else "LOW",
+            evidence={"metric": rounded(metric) if number(metric) else metric},
+            reason="Deterministic association within this scope; not a causal claim.",
+        )
+        return result

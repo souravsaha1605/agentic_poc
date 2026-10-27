@@ -1,0 +1,19 @@
+bundle:
+  name: forecast-rca-readiness
+
+variables:
+  cluster_id:
+    description: Existing approved Databricks development cluster ID
+
+resources:
+  jobs:
+    readiness:
+      name: forecast-rca-lab-readiness
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: certify_and_publish
+          existing_cluster_id: ${var.cluster_id}
+          notebook_task:
+            notebook_path: ../01_data_initialization.ipynb
+      # Intentionally no automatic schedule until source cadence and budget
+      # owners are confirmed. Reuse this ONE job for scheduled refresh later.

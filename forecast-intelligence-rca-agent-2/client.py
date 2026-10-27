@@ -1,78 +1,40 @@
-"""
-client.py -- Azure OpenAI client factory (singleton).
-============================================================================
+"""Lazy Azure OpenAI client: importing offline modules never needs a key."""
 
-PURPOSE
--------
-Creates exactly one OpenAI Python-client instance configured for Azure
-OpenAI and exposes it as the module-level ``client`` variable.  Every
-other module imports it:  from client import client
-
-DESIGN RATIONALE
-----------------
-- Singleton pattern: the client is stateless and thread-safe; no benefit
-  to creating multiple instances.
-- Fail-fast: if credentials are missing the import raises RuntimeError,
-  so misconfiguration is caught at startup, not during the first request.
-- Secrets from .env: credentials are loaded by config.py via python-dotenv
-  and never appear in source code (BRD SS33).
-
-BRD REFERENCES: SS33 (Security -- secrets management).
-"""
-
-# Third-party imports
-from openai import OpenAI
-
-# Project imports -- config.py loads .env and exposes the credential constants
-from config import (
-    AZURE_OPENAI_ENDPOINT,    # Azure OpenAI endpoint URL
-    AZURE_OPENAI_API_KEY,     # API key (secret -- never log or expose)
-    AZURE_OPENAI_API_VERSION, # API version string (e.g. "2025-08-07-preview")
-)
+from functools import lru_cache
+import os
+from urllib.parse import urlsplit
 
 
-def _build_client() -> OpenAI:
-    """
-    Construct and return the Azure OpenAI client.
+def runtime_setting(name, default=None):
+    """Support the platform's non-reserved MY_ bindings without copying secrets."""
+    return os.getenv(name) or os.getenv("MY_" + name) or default
 
-    The base_url is the endpoint with a trailing slash appended.  No
-    api-version query parameter is sent — the Azure AI Foundry endpoint
-    (*.services.ai.azure.com) does not require or accept it, unlike the
-    legacy *.openai.azure.com endpoint.
 
-    Returns:
-        OpenAI: A configured client instance ready for responses.create().
+@lru_cache(maxsize=1)
+def get_client():
+    from dotenv import load_dotenv
+    from openai import OpenAI
 
-    Raises:
-        RuntimeError: If AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_API_KEY
-            is not set (i.e. .env is missing or not loaded).
-    """
-    # Fail-fast guard -- prevent silent misconfiguration
-    if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_API_KEY:
-        raise RuntimeError(
-            "Azure OpenAI credentials not found. "
-            "Populate .env with AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY."
+    load_dotenv()
+    endpoint = runtime_setting("AZURE_OPENAI_ENDPOINT", "").rstrip("/") + "/"
+    key = runtime_setting("AZURE_OPENAI_API_KEY")
+    parsed = urlsplit(endpoint)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "Configure an HTTPS Azure OpenAI base URL without credentials or query parameters."
         )
-
-    # Construct the client with sensible defaults:
-    #   timeout=60s   -- generous enough for LLM inference
-    #   max_retries=2 -- automatic retry on transient HTTP errors
-    #
-    # NOTE: The trailing slash on the endpoint is required so httpx
-    # URL.join() preserves the full path (e.g. '/openai/v1/') when
-    # appending relative paths like 'responses', 'chat/completions', etc.
-    # No api-version query param is sent — the Azure AI Foundry endpoint
-    # (*.services.ai.azure.com) rejects it with 400 "API version not supported".
-    return OpenAI(
-        base_url=f"{AZURE_OPENAI_ENDPOINT}/",
-        api_key=AZURE_OPENAI_API_KEY,
-        timeout=60,
-        max_retries=2,
-    )
-
-
-# ------------------------------------------------------------------
-# Module-level singleton -- created once at import time.
-# All other modules should do:  from client import client
-# ------------------------------------------------------------------
-client = _build_client()
+    if not parsed.path.endswith("/openai/v1/"):
+        raise ValueError("AZURE_OPENAI_ENDPOINT must include /openai/v1/.")
+    if not key:
+        raise ValueError(
+            "Configure AZURE_OPENAI_API_KEY securely in environment settings."
+        )
+    # Automatic retries would make an invisible extra paid request. The app ledger
+    # reserves each explicit HTTP attempt, including attempts that fail.
+    return OpenAI(base_url=endpoint, api_key=key, timeout=30, max_retries=0)

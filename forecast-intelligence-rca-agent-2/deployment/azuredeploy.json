@@ -1,0 +1,331 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Reviewable initial footprint. B1 App Service has a paid baseline. Runtime LLM and Teams start disabled. Existing OpenAI/Databricks resources are reused; no keys are template parameters."
+  },
+  "parameters": {
+    "appName": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 50
+    },
+    "storageName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "database": {
+      "type": "string",
+      "defaultValue": "workspace.forecast_rca_lab"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[concat(parameters('appName'), '-identity')]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[concat(parameters('appName'), '-plan')]",
+      "location": "[parameters('location')]",
+      "kind": "linux",
+      "sku": {
+        "name": "B1",
+        "tier": "Basic",
+        "capacity": 1
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('storageName')]",
+      "location": "[parameters('location')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "supportsHttpsTrafficOnly": true,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": false,
+        "defaultToOAuthAuthentication": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(parameters('storageName'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+      ],
+      "properties": {
+        "deleteRetentionPolicy": {
+          "enabled": true,
+          "days": 7
+        },
+        "isVersioningEnabled": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(parameters('storageName'), '/default/forecast-rca-state')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageName'), 'default')]"
+      ],
+      "properties": {
+        "publicAccess": "None"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(parameters('storageName'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+      ],
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('appName')]",
+      "location": "[parameters('location')]",
+      "kind": "app,linux",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity'))]": {}
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity'))]",
+        "[resourceId('Microsoft.Web/serverfarms', concat(parameters('appName'), '-plan'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', concat(parameters('appName'), '-plan'))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "linuxFxVersion": "PYTHON|3.12",
+          "alwaysOn": true,
+          "ftpsState": "Disabled",
+          "minTlsVersion": "1.2",
+          "appCommandLine": "python -m channels.host",
+          "appSettings": [
+            {
+              "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+              "value": "true"
+            },
+            {
+              "name": "ENABLE_LLM",
+              "value": "false"
+            },
+            {
+              "name": "TEAMS_ENABLED",
+              "value": "false"
+            },
+            {
+              "name": "CHANNEL_MODE",
+              "value": "development"
+            },
+            {
+              "name": "GENIE_MODE",
+              "value": "off"
+            },
+            {
+              "name": "FACTS_PROVIDER",
+              "value": "deterministic"
+            },
+            {
+              "name": "STATE_BACKEND",
+              "value": "azure"
+            },
+            {
+              "name": "MAX_PAID_CALLS",
+              "value": "70"
+            },
+            {
+              "name": "STATE_BLOB_ACCOUNT_URL",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), '2023-05-01').primaryEndpoints.blob]"
+            },
+            {
+              "name": "STATE_BLOB_CONTAINER",
+              "value": "forecast-rca-state"
+            },
+            {
+              "name": "QUEUE_ACCOUNT_URL",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), '2023-05-01').primaryEndpoints.queue]"
+            },
+            {
+              "name": "QUEUE_NAME",
+              "value": "forecast-rca-commands"
+            },
+            {
+              "name": "POISON_QUEUE_NAME",
+              "value": "forecast-rca-poison"
+            },
+            {
+              "name": "BOT_CLIENT_ID",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), '2023-01-31').clientId]"
+            },
+            {
+              "name": "BOT_TENANT_ID",
+              "value": "[subscription().tenantId]"
+            },
+            {
+              "name": "BOT_AUTH_TYPE",
+              "value": "UserManagedIdentity"
+            },
+            {
+              "name": "AZURE_CLIENT_ID",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), '2023-01-31').clientId]"
+            },
+            {
+              "name": "ARM_CLIENT_ID",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), '2023-01-31').clientId]"
+            },
+            {
+              "name": "ARM_USE_MSI",
+              "value": "true"
+            },
+            {
+              "name": "DATABRICKS_AUTH_TYPE",
+              "value": "azure-msi"
+            },
+            {
+              "name": "FORECAST_DATABASE",
+              "value": "[parameters('database')]"
+            },
+            {
+              "name": "IDENTITY_MAP_FILE",
+              "value": "/home/site/wwwroot/private/identity-map.json"
+            },
+            {
+              "name": "PRIVACY_NOTICE_FILE",
+              "value": "/home/site/wwwroot/private/privacy.txt"
+            },
+            {
+              "name": "TERMS_NOTICE_FILE",
+              "value": "/home/site/wwwroot/private/terms.txt"
+            },
+            {
+              "name": "TEAMS_ACCEPTANCE_REPORT",
+              "value": "/home/site/wwwroot/private/acceptance-gates.json"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.BotService/botServices",
+      "apiVersion": "2022-09-15",
+      "name": "[concat(parameters('appName'), '-bot')]",
+      "location": "global",
+      "kind": "azurebot",
+      "sku": {
+        "name": "F0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity'))]",
+        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+      ],
+      "properties": {
+        "displayName": "Forecast Intelligence RCA",
+        "endpoint": "[concat('https://', parameters('appName'), '.azurewebsites.net/api/messages')]",
+        "msaAppType": "UserAssignedMSI",
+        "msaAppId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), '2023-01-31').clientId]",
+        "msaAppTenantId": "[subscription().tenantId]",
+        "msaAppMSIResourceId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity'))]"
+      }
+    },
+    {
+      "type": "Microsoft.BotService/botServices/channels",
+      "apiVersion": "2022-09-15",
+      "name": "[concat(parameters('appName'), '-bot/MsTeamsChannel')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.BotService/botServices', concat(parameters('appName'), '-bot'))]"
+      ],
+      "properties": {
+        "channelName": "MsTeamsChannel",
+        "properties": {
+          "isEnabled": true
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(parameters('storageName'), '/default/forecast-rca-commands')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/queueServices', parameters('storageName'), 'default')]"
+      ],
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(parameters('storageName'), '/default/forecast-rca-poison')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/queueServices', parameters('storageName'), 'default')]"
+      ],
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+      ],
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]"
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), '974c5e8b-45b9-4653-ba55-5f855dd0fb88')]",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+      ],
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88')]"
+      }
+    }
+  ],
+  "outputs": {
+    "appUrl": {
+      "type": "string",
+      "value": "[concat('https://',parameters('appName'),'.azurewebsites.net')]"
+    },
+    "managedIdentityClientId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', concat(parameters('appName'), '-identity')), '2023-01-31').clientId]"
+    },
+    "storageName": {
+      "type": "string",
+      "value": "[parameters('storageName')]"
+    }
+  }
+}
