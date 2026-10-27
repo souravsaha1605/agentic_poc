@@ -1,0 +1,2 @@
+-r core.txt
+pyodbc>=5,<6

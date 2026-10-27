@@ -1,0 +1,9 @@
+{
+  "fields": {
+    "product": "K100",
+    "amount": 1500,
+    "currency": "INR"
+  },
+  "markdown": "# Synthetic receipt\nK100 kettle INR 1500",
+  "provenance": "hand-authored expected example"
+}

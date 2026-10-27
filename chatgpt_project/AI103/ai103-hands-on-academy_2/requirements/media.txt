@@ -1,0 +1,2 @@
+-r core.txt
+pillow>=10.4,<13

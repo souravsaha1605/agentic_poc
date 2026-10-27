@@ -1,0 +1,14 @@
+// Purpose: Query application telemetry
+// Learn: Inspect traces, latency and error signals after telemetry exists.
+// Run: Use Azure Portal Application Insights / Log Analytics query editor as described in docs/setup/09_MONITORING.md. Run one query at a time.
+
+// Workspace-based Application Insights. Verify table names in your query context.
+AppDependencies
+| where TimeGenerated > ago(1h)
+| summarize requests=count(), p95_ms=percentile(DurationMs,95) by Name
+| order by p95_ms desc
+
+// Error classes without raw prompt/credential payloads.
+AppExceptions
+| where TimeGenerated > ago(1h)
+| summarize count() by ExceptionType

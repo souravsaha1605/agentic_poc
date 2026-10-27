@@ -1,0 +1,32 @@
+[
+  {
+    "id": "returns-v1",
+    "text": "Unused items may be returned within 30 days after delivery. A receipt is required.",
+    "tenant": "retail",
+    "kind": "policy"
+  },
+  {
+    "id": "refunds-v1",
+    "text": "Refunds above 1000 INR require supervisor approval. Eligible refunds use the original payment method.",
+    "tenant": "retail",
+    "kind": "policy"
+  },
+  {
+    "id": "delivery-v1",
+    "text": "Standard delivery takes 3 to 5 business days after dispatch.",
+    "tenant": "retail",
+    "kind": "policy"
+  },
+  {
+    "id": "warranty-v1",
+    "text": "Model K100 kettle has a 12 month warranty for manufacturing defects.",
+    "tenant": "retail",
+    "kind": "product"
+  },
+  {
+    "id": "private-v1",
+    "text": "Partner wholesale discount is 40 percent.",
+    "tenant": "partner",
+    "kind": "private"
+  }
+]

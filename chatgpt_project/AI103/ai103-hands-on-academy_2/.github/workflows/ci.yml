@@ -1,0 +1,18 @@
+# Purpose: Automate local regression checks
+# Learn: See how repository changes are checked before deployment.
+# Run: Runs in GitHub Actions when its configured triggers fire; follow azure_execution/ci_cd/README.md. Not a Databricks notebook.
+
+name: local-quality-gates
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - run: python -m unittest discover -s tests -v
+      - run: python scripts/verify_offline.py
+      - run: python labs/23_evaluation_datasets_and_regression_gates/run.py

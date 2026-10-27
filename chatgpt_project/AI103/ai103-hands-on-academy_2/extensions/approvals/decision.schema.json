@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "approve",
+        "reject"
+      ]
+    },
+    "comment": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_id",
+    "decision"
+  ],
+  "additionalProperties": false
+}

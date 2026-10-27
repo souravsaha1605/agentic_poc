@@ -43,6 +43,20 @@ token_provider = get_bearer_token_provider(
 client = OpenAI(base_url=AZURE_OPENAI_ENDPOINT, api_key=token_provider)
 
 
+from openai import OpenAI
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+token_provider = get_bearer_token_provider(
+    DefaultAzureCredential(),
+    "https://cognitiveservices.azure.com/.default"
+)
+
+client = OpenAI(
+    base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    api_key=token_provider,
+)
+
+
 # =============================================================================
 # MAIN SCRIPT LOGIC
 # =============================================================================

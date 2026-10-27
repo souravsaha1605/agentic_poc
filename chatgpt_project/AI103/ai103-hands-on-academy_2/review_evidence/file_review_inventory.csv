@@ -1,0 +1,388 @@
+file,bytes,review_or_validation
+.env.example,1372,Packaged inventory; role explained in MASTER_GUIDE.md
+.github/workflows/ci.yml,683,Purpose/Learn/Run annotated; Source reviewed; runtime limits in VALIDATION.md
+.github/workflows/deploy.yml,1326,Purpose/Learn/Run annotated; Source reviewed; runtime limits in VALIDATION.md
+.gitignore,96,Packaged inventory; role explained in MASTER_GUIDE.md
+Dockerfile,713,Purpose/Learn/Run annotated; Source reviewed; runtime limits in VALIDATION.md
+MASTER_GUIDE.md,90894,Local link targets checked; learning/setup documentation
+PROGRESS.csv,3425,Packaged inventory; role explained in MASTER_GUIDE.md
+README.md,656,Local link targets checked; learning/setup documentation
+REVIEW_REPORT.md,9121,Local link targets checked; learning/setup documentation
+SOURCE_HANDBOOK.docx,62881,Byte-identical to input ZIP
+START_HERE.md,4217,Local link targets checked; learning/setup documentation
+VALIDATION.md,3280,Local link targets checked; learning/setup documentation
+azure_execution/README.md,2064,Local link targets checked; learning/setup documentation
+azure_execution/app_service/README.md,3066,Local link targets checked; learning/setup documentation
+azure_execution/app_service/smoke.py,1107,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+azure_execution/ci_cd/README.md,1748,Local link targets checked; learning/setup documentation
+azure_execution/cloud_shell/README.md,1387,Local link targets checked; learning/setup documentation
+azure_execution/content_understanding/README.md,1971,Local link targets checked; learning/setup documentation
+azure_execution/fabric/README.md,2122,Local link targets checked; learning/setup documentation
+azure_execution/logic_apps/README.md,3637,Local link targets checked; learning/setup documentation
+azure_execution/native_vm/README.md,2629,Local link targets checked; learning/setup documentation
+azure_execution/search_indexer/README.md,3585,Local link targets checked; learning/setup documentation
+capstones/01_safe_retail_faq/README.md,2139,Local link targets checked; learning/setup documentation
+capstones/01_safe_retail_faq/RUNBOOK.md,3322,Local link targets checked; learning/setup documentation
+capstones/01_safe_retail_faq/run.py,1358,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+capstones/02_receipt_and_refund_workflow/README.md,2295,Local link targets checked; learning/setup documentation
+capstones/02_receipt_and_refund_workflow/RUNBOOK.md,2694,Local link targets checked; learning/setup documentation
+capstones/02_receipt_and_refund_workflow/run.py,2289,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+capstones/03_multilingual_contact_center/README.md,2883,Local link targets checked; learning/setup documentation
+capstones/03_multilingual_contact_center/RUNBOOK.md,4354,Local link targets checked; learning/setup documentation
+capstones/03_multilingual_contact_center/run.py,2422,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+capstones/04_enterprise_research_assistant/README.md,2901,Local link targets checked; learning/setup documentation
+capstones/04_enterprise_research_assistant/RUNBOOK.md,3966,Local link targets checked; learning/setup documentation
+capstones/04_enterprise_research_assistant/run.py,2563,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+capstones/README.md,625,Local link targets checked; learning/setup documentation
+capstones/catalog.json,651,JSON parsed; catalog targets checked where applicable
+config/cost_scenario.json,240,JSON parsed; catalog targets checked where applicable
+config/execution.json,17375,JSON parsed; catalog targets checked where applicable
+data/attacks.json,594,JSON parsed; catalog targets checked where applicable
+data/documents/delivery-v1.txt,60,Packaged inventory; role explained in MASTER_GUIDE.md
+data/documents/private-v1.txt,41,Packaged inventory; role explained in MASTER_GUIDE.md
+data/documents/refunds-v1.txt,101,Packaged inventory; role explained in MASTER_GUIDE.md
+data/documents/returns-v1.txt,82,Packaged inventory; role explained in MASTER_GUIDE.md
+data/documents/warranty-v1.txt,68,Packaged inventory; role explained in MASTER_GUIDE.md
+data/enterprise/sales.csv,58,Packaged inventory; role explained in MASTER_GUIDE.md
+data/fixtures/content_understanding.json,196,JSON parsed; catalog targets checked where applicable
+data/fixtures/language.json,217,JSON parsed; catalog targets checked where applicable
+data/fixtures/receipt.json,219,JSON parsed; catalog targets checked where applicable
+data/fixtures/speech.json,135,JSON parsed; catalog targets checked where applicable
+data/fixtures/translation.json,278,JSON parsed; catalog targets checked where applicable
+data/fixtures/vision.json,142,JSON parsed; catalog targets checked where applicable
+data/media/README.md,583,Local link targets checked; learning/setup documentation
+data/media/mask.png,5421,Packaged inventory; role explained in MASTER_GUIDE.md
+data/media/product.png,15174,Packaged inventory; role explained in MASTER_GUIDE.md
+data/media/receipt.png,45660,Packaged inventory; role explained in MASTER_GUIDE.md
+data/media/video_reference.png,8467,Packaged inventory; role explained in MASTER_GUIDE.md
+data/orders.json,299,JSON parsed; catalog targets checked where applicable
+data/policies.json,830,JSON parsed; catalog targets checked where applicable
+databricks/00_BOOTSTRAP.py,3189,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/capstones/01_safe_retail_faq.py,3179,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/capstones/02_receipt_and_refund_workflow.py,3288,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/capstones/03_multilingual_contact_center.py,3292,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/capstones/04_enterprise_research_assistant.py,3309,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/03_generation_controls.py,3243,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/06_domain_extraction.py,3186,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/10_custom_enrichment.py,3193,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/12_rest_transport.py,3163,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/15_memory_summary.py,3182,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/19_group_discussion.py,3224,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/20_logic_app_submit.py,3185,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/23_rag_regression.py,3170,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/24_visual_evidence.py,3167,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/26_agentic_analyzer.py,3224,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/26_multimodal_ingestion.py,3223,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/extensions/30_cosmos_vector.py,3219,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/00_environment_and_project_tour.py,3224,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/01_secrets_identity_and_key_vault.py,3262,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/02_model_calls_and_routing.py,3200,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/03_prompts_and_structured_outputs.py,3236,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/04_content_safety_input_and_output.py,3246,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/05_prompt_injection_and_red_teaming.py,3264,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/06_language_and_pii_preprocessing.py,3249,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/07_translation_and_multilingual_flow.py,3265,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/08_embeddings_and_chunking.py,3195,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/09_azure_search_vector_hybrid_semantic.py,3336,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/10_ingestion_ocr_and_enrichment.py,3250,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/11_grounded_answers_with_rag.py,3247,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/12_function_calling_and_rest_contracts.py,3286,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/13_dynamic_instructions_and_authorization.py,3311,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/14_retries_idempotency_and_caching.py,3263,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/15_memory_windows_redis_and_cosmos.py,3277,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/16_foundry_managed_agent.py,3184,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/17_agentic_retrieval_and_knowledge_tools.py,3321,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/18_sequential_and_concurrent_workflows.py,3316,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/19_multi_agent_orchestration_and_reflection.py,3346,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/20_human_approvals_and_logic_apps.py,3274,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/21_mcp_server_and_client.py,3196,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/22_tracing_and_loop_diagnostics.py,3232,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/23_evaluation_datasets_and_regression_gates.py,3341,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/24_vision_accessibility_and_visual_safety.py,3330,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/25_document_intelligence_receipts_and_layout.py,3357,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/26_content_understanding_analyzers.py,3265,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/27_speech_transcription_synthesis_translation.py,3374,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/28_image_generation_and_mask_editing.py,3271,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/29_video_generation_and_editing.py,3267,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/30_enterprise_grounding_and_operational_data.py,3343,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/31_infrastructure_deployment_and_ci_cd.py,3304,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/labs/32_cost_quotas_scaling_and_drift.py,3254,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+databricks/secret_mapping.json,9573,JSON parsed; catalog targets checked where applicable
+docs/ARCHITECTURE.md,1658,Local link targets checked; learning/setup documentation
+docs/BEGINNER_GUIDE.md,3830,Local link targets checked; learning/setup documentation
+docs/CLEANUP.md,1107,Local link targets checked; learning/setup documentation
+docs/CODE_MAP.md,5240,Local link targets checked; learning/setup documentation
+docs/CONFIGURATION.md,3046,Local link targets checked; learning/setup documentation
+docs/COVERAGE.md,9413,Local link targets checked; learning/setup documentation
+docs/DEPENDENCIES.md,1562,Local link targets checked; learning/setup documentation
+docs/EXECUTION_MATRIX.md,8242,Local link targets checked; learning/setup documentation
+docs/EXPERIMENT_TEMPLATE.md,324,Local link targets checked; learning/setup documentation
+docs/FIRST_TWO_DAYS.md,647,Local link targets checked; learning/setup documentation
+docs/INTERVIEW_PRACTICE.md,2578,Local link targets checked; learning/setup documentation
+docs/OBJECTIVE_EVIDENCE.md,4514,Local link targets checked; learning/setup documentation
+docs/SOURCES.md,1547,Local link targets checked; learning/setup documentation
+docs/TROUBLESHOOTING.md,3156,Local link targets checked; learning/setup documentation
+docs/setup/00_WORKSTATION.md,1449,Local link targets checked; learning/setup documentation
+docs/setup/01_IDENTITY_AND_SECRETS.md,2308,Local link targets checked; learning/setup documentation
+docs/setup/02_FOUNDRY_AND_MODELS.md,3565,Local link targets checked; learning/setup documentation
+docs/setup/03_SAFETY.md,2689,Local link targets checked; learning/setup documentation
+docs/setup/04_LANGUAGE_AND_SPEECH.md,3042,Local link targets checked; learning/setup documentation
+docs/setup/05_SEARCH_AND_INGESTION.md,3510,Local link targets checked; learning/setup documentation
+docs/setup/06_MEMORY_AND_ENTERPRISE.md,4315,Local link targets checked; learning/setup documentation
+docs/setup/07_APPROVALS_LOGIC_APPS.md,3090,Local link targets checked; learning/setup documentation
+docs/setup/08_MCP.md,1534,Local link targets checked; learning/setup documentation
+docs/setup/09_MONITORING.md,3608,Local link targets checked; learning/setup documentation
+docs/setup/10_DOCUMENTS_AND_MEDIA.md,5514,Local link targets checked; learning/setup documentation
+docs/setup/11_DEPLOYMENT_AND_NETWORKING.md,3603,Local link targets checked; learning/setup documentation
+docs/setup/DATABRICKS.md,10839,Local link targets checked; learning/setup documentation
+evals/cases.json,806,JSON parsed; catalog targets checked where applicable
+extensions/agentic_analyzer/README.md,746,Local link targets checked; learning/setup documentation
+extensions/agentic_analyzer/RUNBOOK.md,3216,Local link targets checked; learning/setup documentation
+extensions/agentic_analyzer/analyzer.json,435,JSON parsed; catalog targets checked where applicable
+extensions/agentic_analyzer/run.py,2113,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/approvals/decision.schema.json,314,JSON parsed; catalog targets checked where applicable
+extensions/approvals/request.schema.json,547,JSON parsed; catalog targets checked where applicable
+extensions/custom_skill/README.md,639,Local link targets checked; learning/setup documentation
+extensions/custom_skill/RUNBOOK.md,1883,Local link targets checked; learning/setup documentation
+extensions/custom_skill/handler.py,596,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/custom_skill/skill.template.json,467,JSON parsed; catalog targets checked where applicable
+extensions/domain_extraction/README.md,402,Local link targets checked; learning/setup documentation
+extensions/domain_extraction/RUNBOOK.md,3226,Local link targets checked; learning/setup documentation
+extensions/domain_extraction/run.py,1828,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/generation_controls/README.md,622,Local link targets checked; learning/setup documentation
+extensions/generation_controls/RUNBOOK.md,3469,Local link targets checked; learning/setup documentation
+extensions/generation_controls/run.py,1618,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/logic_app_submit/README.md,337,Local link targets checked; learning/setup documentation
+extensions/logic_app_submit/RUNBOOK.md,2723,Local link targets checked; learning/setup documentation
+extensions/logic_app_submit/run.py,1263,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/multimodal_ingestion/README.md,719,Local link targets checked; learning/setup documentation
+extensions/multimodal_ingestion/RUNBOOK.md,3725,Local link targets checked; learning/setup documentation
+extensions/multimodal_ingestion/run.py,2334,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/rag_evaluation/README.md,432,Local link targets checked; learning/setup documentation
+extensions/rag_evaluation/RUNBOOK.md,3714,Local link targets checked; learning/setup documentation
+extensions/rag_evaluation/cases.json,645,JSON parsed; catalog targets checked where applicable
+extensions/rag_evaluation/run.py,1623,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/rest_tools/README.md,412,Local link targets checked; learning/setup documentation
+extensions/rest_tools/RUNBOOK.md,2255,Local link targets checked; learning/setup documentation
+extensions/rest_tools/client.py,488,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/rest_tools/run.py,1170,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/rest_tools/server.py,1044,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+extensions/visual_evidence/README.md,522,Local link targets checked; learning/setup documentation
+extensions/visual_evidence/RUNBOOK.md,3636,Local link targets checked; learning/setup documentation
+extensions/visual_evidence/VISUAL_POLICY.md,986,Local link targets checked; learning/setup documentation
+extensions/visual_evidence/run.py,2721,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+infra/README.md,2444,Local link targets checked; learning/setup documentation
+infra/main.bicep,2427,Purpose/Learn/Run annotated; Source reviewed; runtime limits in VALIDATION.md
+labs/00_environment_and_project_tour/INSTRUCTOR_NOTES.md,1328,Local link targets checked; learning/setup documentation
+labs/00_environment_and_project_tour/PORTAL.md,789,Local link targets checked; learning/setup documentation
+labs/00_environment_and_project_tour/README.md,3019,Local link targets checked; learning/setup documentation
+labs/00_environment_and_project_tour/RUNBOOK.md,2319,Local link targets checked; learning/setup documentation
+labs/00_environment_and_project_tour/run.py,990,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/01_secrets_identity_and_key_vault/INSTRUCTOR_NOTES.md,1424,Local link targets checked; learning/setup documentation
+labs/01_secrets_identity_and_key_vault/PORTAL.md,823,Local link targets checked; learning/setup documentation
+labs/01_secrets_identity_and_key_vault/README.md,3377,Local link targets checked; learning/setup documentation
+labs/01_secrets_identity_and_key_vault/RUNBOOK.md,3320,Local link targets checked; learning/setup documentation
+labs/01_secrets_identity_and_key_vault/run.py,1343,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/02_model_calls_and_routing/INSTRUCTOR_NOTES.md,1433,Local link targets checked; learning/setup documentation
+labs/02_model_calls_and_routing/PORTAL.md,850,Local link targets checked; learning/setup documentation
+labs/02_model_calls_and_routing/README.md,3607,Local link targets checked; learning/setup documentation
+labs/02_model_calls_and_routing/RUNBOOK.md,3566,Local link targets checked; learning/setup documentation
+labs/02_model_calls_and_routing/run.py,1635,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/03_prompts_and_structured_outputs/INSTRUCTOR_NOTES.md,1364,Local link targets checked; learning/setup documentation
+labs/03_prompts_and_structured_outputs/PORTAL.md,822,Local link targets checked; learning/setup documentation
+labs/03_prompts_and_structured_outputs/README.md,3445,Local link targets checked; learning/setup documentation
+labs/03_prompts_and_structured_outputs/RUNBOOK.md,3384,Local link targets checked; learning/setup documentation
+labs/03_prompts_and_structured_outputs/run.py,1469,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/04_content_safety_input_and_output/INSTRUCTOR_NOTES.md,1376,Local link targets checked; learning/setup documentation
+labs/04_content_safety_input_and_output/PORTAL.md,808,Local link targets checked; learning/setup documentation
+labs/04_content_safety_input_and_output/README.md,3351,Local link targets checked; learning/setup documentation
+labs/04_content_safety_input_and_output/RUNBOOK.md,3505,Local link targets checked; learning/setup documentation
+labs/04_content_safety_input_and_output/run.py,1401,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/05_prompt_injection_and_red_teaming/INSTRUCTOR_NOTES.md,1454,Local link targets checked; learning/setup documentation
+labs/05_prompt_injection_and_red_teaming/PORTAL.md,818,Local link targets checked; learning/setup documentation
+labs/05_prompt_injection_and_red_teaming/README.md,3382,Local link targets checked; learning/setup documentation
+labs/05_prompt_injection_and_red_teaming/RUNBOOK.md,2952,Local link targets checked; learning/setup documentation
+labs/05_prompt_injection_and_red_teaming/run.py,1516,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/06_language_and_pii_preprocessing/INSTRUCTOR_NOTES.md,1412,Local link targets checked; learning/setup documentation
+labs/06_language_and_pii_preprocessing/PORTAL.md,848,Local link targets checked; learning/setup documentation
+labs/06_language_and_pii_preprocessing/README.md,3453,Local link targets checked; learning/setup documentation
+labs/06_language_and_pii_preprocessing/RUNBOOK.md,3018,Local link targets checked; learning/setup documentation
+labs/06_language_and_pii_preprocessing/run.py,1060,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/07_translation_and_multilingual_flow/INSTRUCTOR_NOTES.md,1351,Local link targets checked; learning/setup documentation
+labs/07_translation_and_multilingual_flow/PORTAL.md,831,Local link targets checked; learning/setup documentation
+labs/07_translation_and_multilingual_flow/README.md,3374,Local link targets checked; learning/setup documentation
+labs/07_translation_and_multilingual_flow/RUNBOOK.md,2979,Local link targets checked; learning/setup documentation
+labs/07_translation_and_multilingual_flow/run.py,1190,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/08_embeddings_and_chunking/INSTRUCTOR_NOTES.md,1333,Local link targets checked; learning/setup documentation
+labs/08_embeddings_and_chunking/PORTAL.md,823,Local link targets checked; learning/setup documentation
+labs/08_embeddings_and_chunking/README.md,3310,Local link targets checked; learning/setup documentation
+labs/08_embeddings_and_chunking/RUNBOOK.md,3306,Local link targets checked; learning/setup documentation
+labs/08_embeddings_and_chunking/run.py,1308,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/09_azure_search_vector_hybrid_semantic/INSTRUCTOR_NOTES.md,1388,Local link targets checked; learning/setup documentation
+labs/09_azure_search_vector_hybrid_semantic/PORTAL.md,919,Local link targets checked; learning/setup documentation
+labs/09_azure_search_vector_hybrid_semantic/README.md,3503,Local link targets checked; learning/setup documentation
+labs/09_azure_search_vector_hybrid_semantic/RUNBOOK.md,3819,Local link targets checked; learning/setup documentation
+labs/09_azure_search_vector_hybrid_semantic/run.py,1281,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/10_ingestion_ocr_and_enrichment/INSTRUCTOR_NOTES.md,1397,Local link targets checked; learning/setup documentation
+labs/10_ingestion_ocr_and_enrichment/PORTAL.md,863,Local link targets checked; learning/setup documentation
+labs/10_ingestion_ocr_and_enrichment/README.md,3369,Local link targets checked; learning/setup documentation
+labs/10_ingestion_ocr_and_enrichment/RUNBOOK.md,2463,Local link targets checked; learning/setup documentation
+labs/10_ingestion_ocr_and_enrichment/run.py,1314,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/11_grounded_answers_with_rag/INSTRUCTOR_NOTES.md,1401,Local link targets checked; learning/setup documentation
+labs/11_grounded_answers_with_rag/PORTAL.md,878,Local link targets checked; learning/setup documentation
+labs/11_grounded_answers_with_rag/README.md,3384,Local link targets checked; learning/setup documentation
+labs/11_grounded_answers_with_rag/RUNBOOK.md,3909,Local link targets checked; learning/setup documentation
+labs/11_grounded_answers_with_rag/run.py,956,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/12_function_calling_and_rest_contracts/INSTRUCTOR_NOTES.md,1448,Local link targets checked; learning/setup documentation
+labs/12_function_calling_and_rest_contracts/PORTAL.md,888,Local link targets checked; learning/setup documentation
+labs/12_function_calling_and_rest_contracts/README.md,3527,Local link targets checked; learning/setup documentation
+labs/12_function_calling_and_rest_contracts/RUNBOOK.md,3641,Local link targets checked; learning/setup documentation
+labs/12_function_calling_and_rest_contracts/run.py,895,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/13_dynamic_instructions_and_authorization/INSTRUCTOR_NOTES.md,1354,Local link targets checked; learning/setup documentation
+labs/13_dynamic_instructions_and_authorization/PORTAL.md,843,Local link targets checked; learning/setup documentation
+labs/13_dynamic_instructions_and_authorization/README.md,3135,Local link targets checked; learning/setup documentation
+labs/13_dynamic_instructions_and_authorization/RUNBOOK.md,2453,Local link targets checked; learning/setup documentation
+labs/13_dynamic_instructions_and_authorization/run.py,1266,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/14_retries_idempotency_and_caching/INSTRUCTOR_NOTES.md,1382,Local link targets checked; learning/setup documentation
+labs/14_retries_idempotency_and_caching/PORTAL.md,800,Local link targets checked; learning/setup documentation
+labs/14_retries_idempotency_and_caching/README.md,3187,Local link targets checked; learning/setup documentation
+labs/14_retries_idempotency_and_caching/RUNBOOK.md,2399,Local link targets checked; learning/setup documentation
+labs/14_retries_idempotency_and_caching/run.py,1319,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/15_memory_windows_redis_and_cosmos/INSTRUCTOR_NOTES.md,1404,Local link targets checked; learning/setup documentation
+labs/15_memory_windows_redis_and_cosmos/PORTAL.md,907,Local link targets checked; learning/setup documentation
+labs/15_memory_windows_redis_and_cosmos/README.md,3582,Local link targets checked; learning/setup documentation
+labs/15_memory_windows_redis_and_cosmos/RUNBOOK.md,5528,Local link targets checked; learning/setup documentation
+labs/15_memory_windows_redis_and_cosmos/run.py,2170,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/15_memory_windows_redis_and_cosmos/summarize.py,1197,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/16_foundry_managed_agent/INSTRUCTOR_NOTES.md,1371,Local link targets checked; learning/setup documentation
+labs/16_foundry_managed_agent/PORTAL.md,865,Local link targets checked; learning/setup documentation
+labs/16_foundry_managed_agent/README.md,3375,Local link targets checked; learning/setup documentation
+labs/16_foundry_managed_agent/RUNBOOK.md,3367,Local link targets checked; learning/setup documentation
+labs/16_foundry_managed_agent/run.py,2079,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/17_agentic_retrieval_and_knowledge_tools/INSTRUCTOR_NOTES.md,1510,Local link targets checked; learning/setup documentation
+labs/17_agentic_retrieval_and_knowledge_tools/PORTAL.md,911,Local link targets checked; learning/setup documentation
+labs/17_agentic_retrieval_and_knowledge_tools/README.md,3489,Local link targets checked; learning/setup documentation
+labs/17_agentic_retrieval_and_knowledge_tools/RUNBOOK.md,3933,Local link targets checked; learning/setup documentation
+labs/17_agentic_retrieval_and_knowledge_tools/run.py,1101,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/18_sequential_and_concurrent_workflows/INSTRUCTOR_NOTES.md,1352,Local link targets checked; learning/setup documentation
+labs/18_sequential_and_concurrent_workflows/PORTAL.md,831,Local link targets checked; learning/setup documentation
+labs/18_sequential_and_concurrent_workflows/README.md,3132,Local link targets checked; learning/setup documentation
+labs/18_sequential_and_concurrent_workflows/RUNBOOK.md,2511,Local link targets checked; learning/setup documentation
+labs/18_sequential_and_concurrent_workflows/run.py,1628,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/19_multi_agent_orchestration_and_reflection/INSTRUCTOR_NOTES.md,1464,Local link targets checked; learning/setup documentation
+labs/19_multi_agent_orchestration_and_reflection/PORTAL.md,860,Local link targets checked; learning/setup documentation
+labs/19_multi_agent_orchestration_and_reflection/README.md,3651,Local link targets checked; learning/setup documentation
+labs/19_multi_agent_orchestration_and_reflection/RUNBOOK.md,5549,Local link targets checked; learning/setup documentation
+labs/19_multi_agent_orchestration_and_reflection/group_chat.py,1368,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/19_multi_agent_orchestration_and_reflection/run.py,2334,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/20_human_approvals_and_logic_apps/INSTRUCTOR_NOTES.md,1362,Local link targets checked; learning/setup documentation
+labs/20_human_approvals_and_logic_apps/PORTAL.md,900,Local link targets checked; learning/setup documentation
+labs/20_human_approvals_and_logic_apps/README.md,3293,Local link targets checked; learning/setup documentation
+labs/20_human_approvals_and_logic_apps/RUNBOOK.md,2596,Local link targets checked; learning/setup documentation
+labs/20_human_approvals_and_logic_apps/run.py,1469,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/21_mcp_server_and_client/INSTRUCTOR_NOTES.md,1439,Local link targets checked; learning/setup documentation
+labs/21_mcp_server_and_client/PORTAL.md,897,Local link targets checked; learning/setup documentation
+labs/21_mcp_server_and_client/README.md,3436,Local link targets checked; learning/setup documentation
+labs/21_mcp_server_and_client/RUNBOOK.md,2429,Local link targets checked; learning/setup documentation
+labs/21_mcp_server_and_client/run.py,1929,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/21_mcp_server_and_client/server.py,622,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/22_tracing_and_loop_diagnostics/INSTRUCTOR_NOTES.md,1429,Local link targets checked; learning/setup documentation
+labs/22_tracing_and_loop_diagnostics/PORTAL.md,830,Local link targets checked; learning/setup documentation
+labs/22_tracing_and_loop_diagnostics/README.md,3375,Local link targets checked; learning/setup documentation
+labs/22_tracing_and_loop_diagnostics/RUNBOOK.md,2948,Local link targets checked; learning/setup documentation
+labs/22_tracing_and_loop_diagnostics/run.py,1882,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/23_evaluation_datasets_and_regression_gates/INSTRUCTOR_NOTES.md,1442,Local link targets checked; learning/setup documentation
+labs/23_evaluation_datasets_and_regression_gates/PORTAL.md,843,Local link targets checked; learning/setup documentation
+labs/23_evaluation_datasets_and_regression_gates/README.md,3566,Local link targets checked; learning/setup documentation
+labs/23_evaluation_datasets_and_regression_gates/RUNBOOK.md,3320,Local link targets checked; learning/setup documentation
+labs/23_evaluation_datasets_and_regression_gates/run.py,2441,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/24_vision_accessibility_and_visual_safety/INSTRUCTOR_NOTES.md,1424,Local link targets checked; learning/setup documentation
+labs/24_vision_accessibility_and_visual_safety/PORTAL.md,846,Local link targets checked; learning/setup documentation
+labs/24_vision_accessibility_and_visual_safety/README.md,3560,Local link targets checked; learning/setup documentation
+labs/24_vision_accessibility_and_visual_safety/RUNBOOK.md,3537,Local link targets checked; learning/setup documentation
+labs/24_vision_accessibility_and_visual_safety/run.py,1467,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/25_document_intelligence_receipts_and_layout/INSTRUCTOR_NOTES.md,1426,Local link targets checked; learning/setup documentation
+labs/25_document_intelligence_receipts_and_layout/PORTAL.md,889,Local link targets checked; learning/setup documentation
+labs/25_document_intelligence_receipts_and_layout/README.md,3682,Local link targets checked; learning/setup documentation
+labs/25_document_intelligence_receipts_and_layout/RUNBOOK.md,3231,Local link targets checked; learning/setup documentation
+labs/25_document_intelligence_receipts_and_layout/run.py,1247,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/26_content_understanding_analyzers/INSTRUCTOR_NOTES.md,1518,Local link targets checked; learning/setup documentation
+labs/26_content_understanding_analyzers/PORTAL.md,864,Local link targets checked; learning/setup documentation
+labs/26_content_understanding_analyzers/README.md,3622,Local link targets checked; learning/setup documentation
+labs/26_content_understanding_analyzers/RUNBOOK.md,3059,Local link targets checked; learning/setup documentation
+labs/26_content_understanding_analyzers/run.py,981,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/27_speech_transcription_synthesis_translation/INSTRUCTOR_NOTES.md,1502,Local link targets checked; learning/setup documentation
+labs/27_speech_transcription_synthesis_translation/PORTAL.md,956,Local link targets checked; learning/setup documentation
+labs/27_speech_transcription_synthesis_translation/README.md,3577,Local link targets checked; learning/setup documentation
+labs/27_speech_transcription_synthesis_translation/RUNBOOK.md,3336,Local link targets checked; learning/setup documentation
+labs/27_speech_transcription_synthesis_translation/run.py,3369,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/28_image_generation_and_mask_editing/INSTRUCTOR_NOTES.md,1421,Local link targets checked; learning/setup documentation
+labs/28_image_generation_and_mask_editing/PORTAL.md,886,Local link targets checked; learning/setup documentation
+labs/28_image_generation_and_mask_editing/README.md,3454,Local link targets checked; learning/setup documentation
+labs/28_image_generation_and_mask_editing/RUNBOOK.md,3482,Local link targets checked; learning/setup documentation
+labs/28_image_generation_and_mask_editing/run.py,1344,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/29_video_generation_and_editing/INSTRUCTOR_NOTES.md,1642,Local link targets checked; learning/setup documentation
+labs/29_video_generation_and_editing/PORTAL.md,1060,Local link targets checked; learning/setup documentation
+labs/29_video_generation_and_editing/README.md,3639,Local link targets checked; learning/setup documentation
+labs/29_video_generation_and_editing/RUNBOOK.md,3881,Local link targets checked; learning/setup documentation
+labs/29_video_generation_and_editing/run.py,1576,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/30_enterprise_grounding_and_operational_data/INSTRUCTOR_NOTES.md,1386,Local link targets checked; learning/setup documentation
+labs/30_enterprise_grounding_and_operational_data/PORTAL.md,912,Local link targets checked; learning/setup documentation
+labs/30_enterprise_grounding_and_operational_data/README.md,3693,Local link targets checked; learning/setup documentation
+labs/30_enterprise_grounding_and_operational_data/RUNBOOK.md,4905,Local link targets checked; learning/setup documentation
+labs/30_enterprise_grounding_and_operational_data/cosmos_vector.py,1564,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/30_enterprise_grounding_and_operational_data/run.py,1686,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/30_enterprise_grounding_and_operational_data/vector_policy.json,586,JSON parsed; catalog targets checked where applicable
+labs/31_infrastructure_deployment_and_ci_cd/INSTRUCTOR_NOTES.md,1417,Local link targets checked; learning/setup documentation
+labs/31_infrastructure_deployment_and_ci_cd/PORTAL.md,907,Local link targets checked; learning/setup documentation
+labs/31_infrastructure_deployment_and_ci_cd/README.md,3254,Local link targets checked; learning/setup documentation
+labs/31_infrastructure_deployment_and_ci_cd/RUNBOOK.md,2460,Local link targets checked; learning/setup documentation
+labs/31_infrastructure_deployment_and_ci_cd/run.py,1253,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/32_cost_quotas_scaling_and_drift/INSTRUCTOR_NOTES.md,1400,Local link targets checked; learning/setup documentation
+labs/32_cost_quotas_scaling_and_drift/PORTAL.md,811,Local link targets checked; learning/setup documentation
+labs/32_cost_quotas_scaling_and_drift/README.md,3087,Local link targets checked; learning/setup documentation
+labs/32_cost_quotas_scaling_and_drift/RUNBOOK.md,2376,Local link targets checked; learning/setup documentation
+labs/32_cost_quotas_scaling_and_drift/run.py,1447,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+labs/catalog.json,31452,JSON parsed; catalog targets checked where applicable
+observability/queries.kql,628,Purpose/Learn/Run annotated; Source reviewed; runtime limits in VALIDATION.md
+pyproject.toml,295,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/agents.txt,40,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/contact_center.txt,30,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/core.txt,99,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/documents.txt,50,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/enterprise.txt,26,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/evaluation.txt,40,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/fabric.txt,25,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/keyvault.txt,43,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/language.txt,43,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/mcp.txt,79,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/media.txt,29,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/memory.txt,45,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/observability.txt,75,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/services.txt,215,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements/speech.txt,52,Packaged inventory; role explained in MASTER_GUIDE.md
+requirements.txt,42,Packaged inventory; role explained in MASTER_GUIDE.md
+scripts/audit_project.py,2321,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+scripts/package_deployment.py,715,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+scripts/verify_notebooks.py,3007,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+scripts/verify_offline.py,1130,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/__init__.py,211,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/api.py,2546,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/cloud.py,6172,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/common.py,3074,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/domain.py,9289,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/enrichment.py,1279,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/enterprise.py,1175,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/flows.py,4795,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/language.py,1463,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/media.py,3463,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/memory.py,1567,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/notebook.py,9835,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/search.py,3181,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/speech.py,1859,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+src/academy/video.py,3158,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+tests/test_boundaries.py,5230,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+tests/test_capstone_variants.py,3221,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+tests/test_cloud_contracts.py,2310,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+tests/test_final_review.py,7605,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md
+tests/test_review_regressions.py,7013,Purpose/Learn/Run annotated; Python AST parsed; execution scope in VALIDATION.md

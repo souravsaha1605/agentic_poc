@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "title": "Safe retail FAQ",
+    "folder": "capstones/01_safe_retail_faq",
+    "prerequisites": "03–05,08–11,14,22–23"
+  },
+  {
+    "id": 2,
+    "title": "Receipt and refund workflow",
+    "folder": "capstones/02_receipt_and_refund_workflow",
+    "prerequisites": "12–15,20,25"
+  },
+  {
+    "id": 3,
+    "title": "Multilingual contact center",
+    "folder": "capstones/03_multilingual_contact_center",
+    "prerequisites": "04,06–07,11,27"
+  },
+  {
+    "id": 4,
+    "title": "Enterprise research assistant",
+    "folder": "capstones/04_enterprise_research_assistant",
+    "prerequisites": "09,17–19,22–23,30"
+  }
+]

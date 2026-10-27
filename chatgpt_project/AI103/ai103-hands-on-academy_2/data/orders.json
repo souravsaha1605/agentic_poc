@@ -1,0 +1,18 @@
+{
+  "ORD-1001": {
+    "user": "alice",
+    "amount_paise": 150000,
+    "days": 12,
+    "unused": true,
+    "receipt": true,
+    "tenant": "retail"
+  },
+  "ORD-1002": {
+    "user": "bob",
+    "amount_paise": 50000,
+    "days": 45,
+    "unused": true,
+    "receipt": true,
+    "tenant": "retail"
+  }
+}

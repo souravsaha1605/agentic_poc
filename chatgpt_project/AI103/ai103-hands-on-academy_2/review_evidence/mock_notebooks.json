@@ -1,0 +1,251 @@
+{
+  "passed": 49,
+  "total": 49,
+  "results": [
+    {
+      "notebook": "databricks/capstones/01_safe_retail_faq.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/capstones/02_receipt_and_refund_workflow.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/capstones/03_multilingual_contact_center.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/capstones/04_enterprise_research_assistant.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/03_generation_controls.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/06_domain_extraction.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/10_custom_enrichment.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/12_rest_transport.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/15_memory_summary.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/19_group_discussion.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/20_logic_app_submit.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/23_rag_regression.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/24_visual_evidence.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/26_agentic_analyzer.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/26_multimodal_ingestion.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/extensions/30_cosmos_vector.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/00_environment_and_project_tour.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/01_secrets_identity_and_key_vault.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/02_model_calls_and_routing.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/03_prompts_and_structured_outputs.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/04_content_safety_input_and_output.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/05_prompt_injection_and_red_teaming.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/06_language_and_pii_preprocessing.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/07_translation_and_multilingual_flow.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/08_embeddings_and_chunking.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/09_azure_search_vector_hybrid_semantic.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/10_ingestion_ocr_and_enrichment.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/11_grounded_answers_with_rag.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/12_function_calling_and_rest_contracts.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/13_dynamic_instructions_and_authorization.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/14_retries_idempotency_and_caching.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/15_memory_windows_redis_and_cosmos.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/16_foundry_managed_agent.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/17_agentic_retrieval_and_knowledge_tools.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/18_sequential_and_concurrent_workflows.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/19_multi_agent_orchestration_and_reflection.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/20_human_approvals_and_logic_apps.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/21_mcp_server_and_client.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/22_tracing_and_loop_diagnostics.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/23_evaluation_datasets_and_regression_gates.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/24_vision_accessibility_and_visual_safety.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/25_document_intelligence_receipts_and_layout.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/26_content_understanding_analyzers.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/27_speech_transcription_synthesis_translation.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/28_image_generation_and_mask_editing.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/29_video_generation_and_editing.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/30_enterprise_grounding_and_operational_data.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/31_infrastructure_deployment_and_ci_cd.py",
+      "variant": "default",
+      "passed": true
+    },
+    {
+      "notebook": "databricks/labs/32_cost_quotas_scaling_and_drift.py",
+      "variant": "default",
+      "passed": true
+    }
+  ]
+}

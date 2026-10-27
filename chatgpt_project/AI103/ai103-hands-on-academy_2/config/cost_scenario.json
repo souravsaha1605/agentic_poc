@@ -1,0 +1,10 @@
+{
+  "requests": 1000,
+  "calls_per_request": 2,
+  "input_tokens_per_call": 500,
+  "output_tokens_per_call": 100,
+  "input_price_per_million": 1,
+  "output_price_per_million": 4,
+  "tokens_per_minute": 60000,
+  "currency": "EXAMPLE_UNITS"
+}

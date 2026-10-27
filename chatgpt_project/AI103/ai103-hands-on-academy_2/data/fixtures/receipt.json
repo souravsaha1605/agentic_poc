@@ -1,0 +1,13 @@
+{
+  "merchant": "AI103 Sample Store",
+  "currency": "INR",
+  "items": [
+    {
+      "name": "K100 kettle",
+      "quantity": 1,
+      "total": 1500
+    }
+  ],
+  "total": 1500,
+  "provenance": "synthetic ground truth"
+}

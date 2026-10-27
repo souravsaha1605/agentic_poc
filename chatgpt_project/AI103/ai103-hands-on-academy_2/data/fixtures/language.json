@@ -1,0 +1,6 @@
+{
+  "language": "en",
+  "redacted": "My name is [PERSON]. Contact [EMAIL]. My kettle is broken and I am unhappy.",
+  "sentiment": "negative",
+  "provenance": "hand-authored expected example, not a service response"
+}

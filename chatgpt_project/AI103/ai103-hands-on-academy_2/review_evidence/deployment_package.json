@@ -1,0 +1,7 @@
+{
+  "zip_integrity": "passed",
+  "file_count": 40,
+  "isolated_extracted_wsgi_request": "200 OK with expected fixture answer",
+  "secrets_and_course_files_excluded": true,
+  "gunicorn_container_and_azure_hosting": "not tested"
+}

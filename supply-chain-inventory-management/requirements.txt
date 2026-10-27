@@ -1,0 +1,17 @@
+# Requirements for the Agentic AI Supply Chain Exception Management Platform
+# ============================================================
+# These packages are required to run the agent platform.
+# In Databricks, pyspark is pre-installed; the others may need to be
+# pip-installed via %pip install at the top of the notebook.
+
+# LLM client — Azure OpenAI via the OpenAI SDK
+openai>=1.0.0
+
+# Data validation — Pydantic models for typed tool schemas
+pydantic>=2.0.0
+
+# Environment configuration — loads .env file for credentials
+python-dotenv>=1.0.0
+
+# Spark — pre-installed in Databricks; listed for completeness
+pyspark>=3.5.0
