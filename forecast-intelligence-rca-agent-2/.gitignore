@@ -1,0 +1,10 @@
+.venv/
+.python_packages/
+.rca_state/
+local-reports/
+*.sqlite3
+*.sqlite3-*
+state-archive*.json
+identity-map.local.json
+acceptance-gates.local.json
+.ruff_cache/

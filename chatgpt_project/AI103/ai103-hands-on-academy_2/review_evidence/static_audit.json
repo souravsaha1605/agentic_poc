@@ -1,0 +1,20 @@
+{
+  "counts_by_extension": {
+    ".example": 1,
+    ".yml": 2,
+    "": 2,
+    ".json": 29,
+    ".md": 204,
+    ".csv": 3,
+    ".docx": 1,
+    ".py": 127,
+    ".txt": 22,
+    ".png": 4,
+    ".bicep": 1,
+    ".kql": 1,
+    ".toml": 1
+  },
+  "catalog_entries": 49,
+  "yaml": "parsed with PyYAML; not a hosted workflow test",
+  "errors": []
+}

@@ -1,0 +1,14 @@
+{
+  "ENTRA_TENANT_ID:ENTRA_OBJECT_ID": {
+    "verified": false,
+    "verification_provenance": "Operator must verify account linkage before enabling",
+    "principal": {
+      "tenant": "CANONICAL_TENANT_ID",
+      "subject": "CANONICAL_USER_ID",
+      "regions": ["North"],
+      "products": ["P0001", "P0020"],
+      "categories": ["Dairy"]
+    },
+    "session_id": "verified-owned-session-to-resume"
+  }
+}

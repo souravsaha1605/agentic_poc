@@ -1,0 +1,16 @@
+{
+  "description": "Synthetic receipt arithmetic review",
+  "baseAnalyzerId": "prebuilt-document",
+  "config": {
+    "workflow": "agentic"
+  },
+  "fieldSchema": {
+    "fields": {
+      "ArithmeticReview": {
+        "type": "string",
+        "method": "generate",
+        "description": "Compare the visible item values and receipt total. State whether they agree; say insufficient evidence when values are missing."
+      }
+    }
+  }
+}

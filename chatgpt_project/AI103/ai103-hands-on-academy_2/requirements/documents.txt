@@ -1,0 +1,2 @@
+-r core.txt
+azure-ai-documentintelligence>=1.0,<2

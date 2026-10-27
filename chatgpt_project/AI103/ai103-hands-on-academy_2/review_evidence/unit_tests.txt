@@ -1,0 +1,58 @@
+test_abstention (test_boundaries.BoundaryTests.test_abstention) ... ok
+test_api_requires_token (test_boundaries.BoundaryTests.test_api_requires_token) ... ok
+test_api_valid_request (test_boundaries.BoundaryTests.test_api_valid_request) ... ok
+test_cache_scope_and_version (test_boundaries.BoundaryTests.test_cache_scope_and_version) ... ok
+test_chunk_and_vector_errors (test_boundaries.BoundaryTests.test_chunk_and_vector_errors) ... ok
+test_conflicting_idempotency_payload (test_boundaries.BoundaryTests.test_conflicting_idempotency_payload) ... ok
+test_cross_user_order_denied (test_boundaries.BoundaryTests.test_cross_user_order_denied) ... ok
+test_duplicate_effect (test_boundaries.BoundaryTests.test_duplicate_effect) ... ok
+test_expired_approval (test_boundaries.BoundaryTests.test_expired_approval) ... ok
+test_extra_argument_denied (test_boundaries.BoundaryTests.test_extra_argument_denied) ... ok
+test_memory_isolation_and_expiry (test_boundaries.BoundaryTests.test_memory_isolation_and_expiry) ... ok
+test_pending_cannot_execute (test_boundaries.BoundaryTests.test_pending_cannot_execute) ... ok
+test_rejected_cannot_execute (test_boundaries.BoundaryTests.test_rejected_cannot_execute) ... ok
+test_tenant_retrieval (test_boundaries.BoundaryTests.test_tenant_retrieval) ... ok
+test_unauthorized_approval (test_boundaries.BoundaryTests.test_unauthorized_approval) ... ok
+test_unknown_source_denied (test_boundaries.BoundaryTests.test_unknown_source_denied) ... ok
+test_unknown_tool_denied (test_boundaries.BoundaryTests.test_unknown_tool_denied) ... ok
+test_wrong_tenant_evidence_denied (test_boundaries.BoundaryTests.test_wrong_tenant_evidence_denied) ... ok
+test_async_runner_inside_notebook_loop (test_capstone_variants.CompositionTests.test_async_runner_inside_notebook_loop) ... ok
+test_fabric_research_composition (test_capstone_variants.CompositionTests.test_fabric_research_composition) ... ok
+test_speech_contact_center_composition (test_capstone_variants.CompositionTests.test_speech_contact_center_composition) ... ok
+test_failures_do_not_expose_body (test_cloud_contracts.CloudContractTests.test_failures_do_not_expose_body) ... ok
+test_https_required (test_cloud_contracts.CloudContractTests.test_https_required) ... ok
+test_retry_after_not_overridden (test_cloud_contracts.CloudContractTests.test_retry_after_not_overridden) ... ok
+test_write_is_not_retried (test_cloud_contracts.CloudContractTests.test_write_is_not_retried) ... ok
+test_bootstrap_extracts_and_rejects_traversal (test_final_review.FinalReviewTests.test_bootstrap_extracts_and_rejects_traversal) ... ok
+test_cross_tenant_approval_denied (test_final_review.FinalReviewTests.test_cross_tenant_approval_denied) ... ok
+test_legacy_ledger_fails_closed (test_final_review.FinalReviewTests.test_legacy_ledger_fails_closed) ... ok
+test_non_ascii_invalid_token_is_unauthorized (test_final_review.FinalReviewTests.test_non_ascii_invalid_token_is_unauthorized) ... ok
+test_notebook_restores_runtime_and_clears_credentials (test_final_review.FinalReviewTests.test_notebook_restores_runtime_and_clears_credentials) ... ok
+test_role_change_does_not_reuse_cache (test_final_review.FinalReviewTests.test_role_change_does_not_reuse_cache) ... ok
+test_same_user_other_tenant_cannot_execute (test_final_review.FinalReviewTests.test_same_user_other_tenant_cannot_execute) ... ok
+test_unknown_role_denied_before_backend (test_final_review.FinalReviewTests.test_unknown_role_denied_before_backend) ... ok
+test_volume_paths (test_final_review.FinalReviewTests.test_volume_paths) ... ok
+test_api_nonobject_is_bad_request (test_review_regressions.ReviewTests.test_api_nonobject_is_bad_request) ... ok
+test_approval_requires_boolean (test_review_regressions.ReviewTests.test_approval_requires_boolean) ... ok
+test_approval_transition_is_not_reversible (test_review_regressions.ReviewTests.test_approval_transition_is_not_reversible) ... ok
+test_azure_search_tool_keeps_tenant (test_review_regressions.ReviewTests.test_azure_search_tool_keeps_tenant) ... ok
+test_config_rejects_secrets_and_nonobjects (test_review_regressions.ReviewTests.test_config_rejects_secrets_and_nonobjects) ... ok
+test_config_resets_omitted_values (test_review_regressions.ReviewTests.test_config_resets_omitted_values) ... ok
+test_custom_model_and_video_defaults_are_not_secrets (test_review_regressions.ReviewTests.test_custom_model_and_video_defaults_are_not_secrets) ... ok
+test_custom_skill_rejects_unidentifiable_record (test_review_regressions.ReviewTests.test_custom_skill_rejects_unidentifiable_record) ... ok
+test_custom_skill_reports_partial_errors (test_review_regressions.ReviewTests.test_custom_skill_reports_partial_errors) ... ok
+test_key_only_adapters_preserve_auth_contract (test_review_regressions.ReviewTests.test_key_only_adapters_preserve_auth_contract) ... ok
+test_local_lessons_reject_misleading_live (test_review_regressions.ReviewTests.test_local_lessons_reject_misleading_live) ... ok
+test_order_tenant_denied (test_review_regressions.ReviewTests.test_order_tenant_denied) ... ok
+test_rag_screens_before_retrieval (test_review_regressions.ReviewTests.test_rag_screens_before_retrieval) ... ok
+test_unknown_variant_stops (test_review_regressions.ReviewTests.test_unknown_variant_stops) ... ok
+test_video_keyless_loads_identity (test_review_regressions.ReviewTests.test_video_keyless_loads_identity) ... ok
+test_pending_job_id_survives_timeout (test_review_regressions.VideoContractTests.test_pending_job_id_survives_timeout) ... ok
+test_resume_does_not_create_another_job (test_review_regressions.VideoContractTests.test_resume_does_not_create_another_job) ... ok
+
+----------------------------------------------------------------------
+Ran 51 tests in 0.237s
+
+OK
+Video ID: video_pending | Resume instructions: variant=resume, config_json VIDEO_ID
+Video ID: video_existing | Resume instructions: variant=resume, config_json VIDEO_ID

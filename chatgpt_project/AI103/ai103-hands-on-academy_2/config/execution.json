@@ -1,0 +1,704 @@
+{
+  "capstones/01_safe_retail_faq": {
+    "target": "capstones/01_safe_retail_faq/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "MODEL_EMBEDDING",
+      "SEARCH_ENDPOINT",
+      "SEARCH_ADMIN_KEY",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "capstones/02_receipt_and_refund_workflow": {
+    "target": "capstones/02_receipt_and_refund_workflow/run.py",
+    "requirements": "requirements/documents.txt",
+    "required": [
+      "DOCUMENT_ENDPOINT",
+      "DOCUMENT_KEY"
+    ],
+    "variants": [
+      "default",
+      "approve"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "capstones/03_multilingual_contact_center": {
+    "target": "capstones/03_multilingual_contact_center/run.py",
+    "requirements": "requirements/contact_center.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "MODEL_EMBEDDING",
+      "SEARCH_ENDPOINT",
+      "SEARCH_ADMIN_KEY",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY",
+      "LANGUAGE_ENDPOINT",
+      "LANGUAGE_KEY",
+      "TRANSLATOR_KEY",
+      "TRANSLATOR_REGION"
+    ],
+    "variants": [
+      "default",
+      "speech"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "capstones/04_enterprise_research_assistant": {
+    "target": "capstones/04_enterprise_research_assistant/run.py",
+    "requirements": "requirements/enterprise.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "MODEL_EMBEDDING",
+      "SEARCH_ENDPOINT",
+      "SEARCH_ADMIN_KEY",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default",
+      "fabric"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/10_custom_enrichment": {
+    "target": "extensions/custom_skill/handler.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "local",
+    "key_only": false
+  },
+  "extensions/15_memory_summary": {
+    "target": "labs/15_memory_windows_redis_and_cosmos/summarize.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/19_group_discussion": {
+    "target": "labs/19_multi_agent_orchestration_and_reflection/group_chat.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/30_cosmos_vector": {
+    "target": "labs/30_enterprise_grounding_and_operational_data/cosmos_vector.py",
+    "requirements": "requirements/memory.txt",
+    "required": [
+      "AZURE_TENANT_ID",
+      "AZURE_CLIENT_ID",
+      "AZURE_CLIENT_SECRET",
+      "COSMOS_ENDPOINT"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/00_environment_and_project_tour": {
+    "target": "labs/00_environment_and_project_tour/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "local",
+    "key_only": false
+  },
+  "labs/01_secrets_identity_and_key_vault": {
+    "target": "labs/01_secrets_identity_and_key_vault/run.py",
+    "requirements": "requirements/keyvault.txt",
+    "required": [
+      "AZURE_TENANT_ID",
+      "AZURE_CLIENT_ID",
+      "AZURE_CLIENT_SECRET",
+      "KEY_VAULT_URL",
+      "KEY_VAULT_SECRET_NAME"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/02_model_calls_and_routing": {
+    "target": "labs/02_model_calls_and_routing/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "MODEL_REASONING"
+    ],
+    "variants": [
+      "default",
+      "route"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/03_prompts_and_structured_outputs": {
+    "target": "labs/03_prompts_and_structured_outputs/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/04_content_safety_input_and_output": {
+    "target": "labs/04_content_safety_input_and_output/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/05_prompt_injection_and_red_teaming": {
+    "target": "labs/05_prompt_injection_and_red_teaming/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/06_language_and_pii_preprocessing": {
+    "target": "labs/06_language_and_pii_preprocessing/run.py",
+    "requirements": "requirements/language.txt",
+    "required": [
+      "LANGUAGE_ENDPOINT",
+      "LANGUAGE_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/07_translation_and_multilingual_flow": {
+    "target": "labs/07_translation_and_multilingual_flow/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "TRANSLATOR_KEY",
+      "TRANSLATOR_REGION"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/08_embeddings_and_chunking": {
+    "target": "labs/08_embeddings_and_chunking/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_EMBEDDING"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/09_azure_search_vector_hybrid_semantic": {
+    "target": "labs/09_azure_search_vector_hybrid_semantic/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_EMBEDDING",
+      "SEARCH_ENDPOINT",
+      "SEARCH_ADMIN_KEY"
+    ],
+    "variants": [
+      "default",
+      "ingest",
+      "keyword",
+      "vector",
+      "hybrid",
+      "semantic"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/10_ingestion_ocr_and_enrichment": {
+    "target": "labs/10_ingestion_ocr_and_enrichment/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "portal",
+    "key_only": false
+  },
+  "labs/11_grounded_answers_with_rag": {
+    "target": "labs/11_grounded_answers_with_rag/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "MODEL_EMBEDDING",
+      "SEARCH_ENDPOINT",
+      "SEARCH_ADMIN_KEY",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/12_function_calling_and_rest_contracts": {
+    "target": "labs/12_function_calling_and_rest_contracts/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/13_dynamic_instructions_and_authorization": {
+    "target": "labs/13_dynamic_instructions_and_authorization/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "local",
+    "key_only": false
+  },
+  "labs/14_retries_idempotency_and_caching": {
+    "target": "labs/14_retries_idempotency_and_caching/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "local",
+    "key_only": false
+  },
+  "labs/15_memory_windows_redis_and_cosmos": {
+    "target": "labs/15_memory_windows_redis_and_cosmos/run.py",
+    "requirements": "requirements/memory.txt",
+    "required": [],
+    "variants": [
+      "default",
+      "redis",
+      "cosmos"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/16_foundry_managed_agent": {
+    "target": "labs/16_foundry_managed_agent/run.py",
+    "requirements": "requirements/agents.txt",
+    "required": [
+      "AZURE_TENANT_ID",
+      "AZURE_CLIENT_ID",
+      "AZURE_CLIENT_SECRET",
+      "FOUNDRY_PROJECT_ENDPOINT",
+      "MODEL_SMALL"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/17_agentic_retrieval_and_knowledge_tools": {
+    "target": "labs/17_agentic_retrieval_and_knowledge_tools/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default",
+      "azure-search"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/18_sequential_and_concurrent_workflows": {
+    "target": "labs/18_sequential_and_concurrent_workflows/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default",
+      "failure"
+    ],
+    "kind": "local",
+    "key_only": false
+  },
+  "labs/19_multi_agent_orchestration_and_reflection": {
+    "target": "labs/19_multi_agent_orchestration_and_reflection/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL"
+    ],
+    "variants": [
+      "default",
+      "handoff"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/20_human_approvals_and_logic_apps": {
+    "target": "labs/20_human_approvals_and_logic_apps/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default",
+      "reject"
+    ],
+    "kind": "portal",
+    "key_only": false
+  },
+  "labs/21_mcp_server_and_client": {
+    "target": "labs/21_mcp_server_and_client/run.py",
+    "requirements": "requirements/mcp.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "protocol",
+    "key_only": false
+  },
+  "labs/22_tracing_and_loop_diagnostics": {
+    "target": "labs/22_tracing_and_loop_diagnostics/run.py",
+    "requirements": "requirements/observability.txt",
+    "required": [
+      "APPLICATIONINSIGHTS_CONNECTION_STRING"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/23_evaluation_datasets_and_regression_gates": {
+    "target": "labs/23_evaluation_datasets_and_regression_gates/run.py",
+    "requirements": "requirements/evaluation.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_REASONING"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": true
+  },
+  "labs/24_vision_accessibility_and_visual_safety": {
+    "target": "labs/24_vision_accessibility_and_visual_safety/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_VISION",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/25_document_intelligence_receipts_and_layout": {
+    "target": "labs/25_document_intelligence_receipts_and_layout/run.py",
+    "requirements": "requirements/documents.txt",
+    "required": [
+      "DOCUMENT_ENDPOINT",
+      "DOCUMENT_KEY"
+    ],
+    "variants": [
+      "default",
+      "layout",
+      "read",
+      "custom"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/26_content_understanding_analyzers": {
+    "target": "labs/26_content_understanding_analyzers/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "CU_ENDPOINT",
+      "CU_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/27_speech_transcription_synthesis_translation": {
+    "target": "labs/27_speech_transcription_synthesis_translation/run.py",
+    "requirements": "requirements/speech.txt",
+    "required": [
+      "SPEECH_KEY",
+      "SPEECH_REGION"
+    ],
+    "variants": [
+      "default",
+      "translate",
+      "custom"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/28_image_generation_and_mask_editing": {
+    "target": "labs/28_image_generation_and_mask_editing/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_IMAGE"
+    ],
+    "variants": [
+      "default",
+      "edit"
+    ],
+    "kind": "azure",
+    "key_only": true
+  },
+  "labs/29_video_generation_and_editing": {
+    "target": "labs/29_video_generation_and_editing/run.py",
+    "requirements": "requirements/media.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_VIDEO"
+    ],
+    "variants": [
+      "default",
+      "resume",
+      "remix"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/30_enterprise_grounding_and_operational_data": {
+    "target": "labs/30_enterprise_grounding_and_operational_data/run.py",
+    "requirements": "requirements/fabric.txt",
+    "required": [
+      "FABRIC_SQL_CONNECTION_STRING"
+    ],
+    "variants": [
+      "default",
+      "fabric"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "labs/31_infrastructure_deployment_and_ci_cd": {
+    "target": "labs/31_infrastructure_deployment_and_ci_cd/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "portal",
+    "key_only": false
+  },
+  "labs/32_cost_quotas_scaling_and_drift": {
+    "target": "labs/32_cost_quotas_scaling_and_drift/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "local",
+    "key_only": false
+  },
+  "extensions/03_generation_controls": {
+    "target": "extensions/generation_controls/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL"
+    ],
+    "variants": [
+      "default",
+      "temperature",
+      "code"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/06_domain_extraction": {
+    "target": "extensions/domain_extraction/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/12_rest_transport": {
+    "target": "extensions/rest_tools/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [],
+    "variants": [
+      "default"
+    ],
+    "kind": "local",
+    "key_only": false
+  },
+  "extensions/20_logic_app_submit": {
+    "target": "extensions/logic_app_submit/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "LOGIC_APP_TRIGGER_URL"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/23_rag_regression": {
+    "target": "extensions/rag_evaluation/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_SMALL",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY",
+      "MODEL_EMBEDDING",
+      "SEARCH_ENDPOINT",
+      "SEARCH_ADMIN_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/24_visual_evidence": {
+    "target": "extensions/visual_evidence/run.py",
+    "requirements": "requirements/documents.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_VISION",
+      "DOCUMENT_ENDPOINT",
+      "DOCUMENT_KEY",
+      "SAFETY_ENDPOINT",
+      "SAFETY_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/26_multimodal_ingestion": {
+    "target": "extensions/multimodal_ingestion/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "AZURE_OPENAI_ENDPOINT",
+      "AZURE_OPENAI_API_KEY",
+      "MODEL_EMBEDDING",
+      "SEARCH_ENDPOINT",
+      "SEARCH_ADMIN_KEY"
+    ],
+    "variants": [
+      "default"
+    ],
+    "kind": "azure",
+    "key_only": false
+  },
+  "extensions/26_agentic_analyzer": {
+    "target": "extensions/agentic_analyzer/run.py",
+    "requirements": "requirements/core.txt",
+    "required": [
+      "CU_ENDPOINT",
+      "CU_KEY"
+    ],
+    "variants": [
+      "default",
+      "create"
+    ],
+    "kind": "azure",
+    "key_only": false
+  }
+}

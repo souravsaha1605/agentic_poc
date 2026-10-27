@@ -1,0 +1,154 @@
+{
+  "passed": 37,
+  "total": 37,
+  "results": [
+    {
+      "script": "labs/00_environment_and_project_tour/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/01_secrets_identity_and_key_vault/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/02_model_calls_and_routing/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/03_prompts_and_structured_outputs/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/04_content_safety_input_and_output/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/05_prompt_injection_and_red_teaming/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/06_language_and_pii_preprocessing/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/07_translation_and_multilingual_flow/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/08_embeddings_and_chunking/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/09_azure_search_vector_hybrid_semantic/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/10_ingestion_ocr_and_enrichment/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/11_grounded_answers_with_rag/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/12_function_calling_and_rest_contracts/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/13_dynamic_instructions_and_authorization/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/14_retries_idempotency_and_caching/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/15_memory_windows_redis_and_cosmos/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/16_foundry_managed_agent/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/17_agentic_retrieval_and_knowledge_tools/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/18_sequential_and_concurrent_workflows/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/19_multi_agent_orchestration_and_reflection/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/20_human_approvals_and_logic_apps/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/21_mcp_server_and_client/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/22_tracing_and_loop_diagnostics/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/23_evaluation_datasets_and_regression_gates/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/24_vision_accessibility_and_visual_safety/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/25_document_intelligence_receipts_and_layout/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/26_content_understanding_analyzers/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/27_speech_transcription_synthesis_translation/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/28_image_generation_and_mask_editing/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/29_video_generation_and_editing/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/30_enterprise_grounding_and_operational_data/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/31_infrastructure_deployment_and_ci_cd/run.py",
+      "passed": true
+    },
+    {
+      "script": "labs/32_cost_quotas_scaling_and_drift/run.py",
+      "passed": true
+    },
+    {
+      "script": "capstones/01_safe_retail_faq/run.py",
+      "passed": true
+    },
+    {
+      "script": "capstones/02_receipt_and_refund_workflow/run.py",
+      "passed": true
+    },
+    {
+      "script": "capstones/03_multilingual_contact_center/run.py",
+      "passed": true
+    },
+    {
+      "script": "capstones/04_enterprise_research_assistant/run.py",
+      "passed": true
+    }
+  ]
+}

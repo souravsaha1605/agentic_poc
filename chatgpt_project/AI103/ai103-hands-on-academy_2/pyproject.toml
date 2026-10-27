@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "ai103-academy"
+version = "1.2.0"
+requires-python = ">=3.11"
+description = "Incremental AI engineering labs with explicit local and Azure paths"
+[tool.setuptools.packages.find]
+where = ["src"]

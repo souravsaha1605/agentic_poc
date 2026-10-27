@@ -1,0 +1,34 @@
+{
+  "container": "ai103-vectors",
+  "partitionKey": "/tenant",
+  "vectorEmbeddingPolicy": {
+    "vectorEmbeddings": [
+      {
+        "path": "/vector",
+        "dataType": "float32",
+        "distanceFunction": "cosine",
+        "dimensions": 3
+      }
+    ]
+  },
+  "indexingPolicy": {
+    "indexingMode": "consistent",
+    "automatic": true,
+    "includedPaths": [
+      {
+        "path": "/*"
+      }
+    ],
+    "excludedPaths": [
+      {
+        "path": "/vector/*"
+      }
+    ],
+    "vectorIndexes": [
+      {
+        "path": "/vector",
+        "type": "flat"
+      }
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+Refunds above 1000 INR require supervisor approval. Eligible refunds use the original payment method.

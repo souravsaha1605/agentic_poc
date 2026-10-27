@@ -1,0 +1,2 @@
+-r core.txt
+azure-cognitiveservices-speech>=1.42,<2

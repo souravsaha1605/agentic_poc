@@ -1,0 +1,22 @@
+{
+  "@odata.type": "#Microsoft.Skills.Custom.WebApiSkill",
+  "name": "retail-product-codes",
+  "description": "Extract synthetic product codes",
+  "context": "/document",
+  "uri": "https://YOUR_APPROVED_HOST/skill",
+  "httpMethod": "POST",
+  "timeout": "PT30S",
+  "batchSize": 10,
+  "inputs": [
+    {
+      "name": "text",
+      "source": "/document/content"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "productCodes",
+      "targetName": "productCodes"
+    }
+  ]
+}

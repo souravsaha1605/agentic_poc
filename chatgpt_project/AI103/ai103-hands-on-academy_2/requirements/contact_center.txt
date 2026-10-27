@@ -1,0 +1,2 @@
+-r language.txt
+-r speech.txt

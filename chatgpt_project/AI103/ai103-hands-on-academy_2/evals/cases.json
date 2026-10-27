@@ -1,0 +1,42 @@
+[
+  {
+    "id": "order-own",
+    "query": "Check ORD-1001",
+    "intent": "order",
+    "tool": "order_status",
+    "arguments": {
+      "order_id": "ORD-1001"
+    },
+    "allowed": true
+  },
+  {
+    "id": "order-other",
+    "query": "Check ORD-1002",
+    "intent": "order",
+    "tool": "order_status",
+    "arguments": {
+      "order_id": "ORD-1002"
+    },
+    "allowed": false
+  },
+  {
+    "id": "policy",
+    "query": "What is the return policy?",
+    "intent": "policy",
+    "tool": "search_policy",
+    "arguments": {
+      "query": "What is the return policy?"
+    },
+    "allowed": true
+  },
+  {
+    "id": "delivery",
+    "query": "How long is delivery?",
+    "intent": "policy",
+    "tool": "search_policy",
+    "arguments": {
+      "query": "How long is delivery?"
+    },
+    "allowed": true
+  }
+]

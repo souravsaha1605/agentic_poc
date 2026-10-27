@@ -1,0 +1,662 @@
+{
+  ".github/workflows/ci.yml": {
+    "purpose": "Automate local regression checks",
+    "learn": "See how repository changes are checked before deployment.",
+    "run": "Runs in GitHub Actions when its configured triggers fire; follow azure_execution/ci_cd/README.md. Not a Databricks notebook."
+  },
+  ".github/workflows/deploy.yml": {
+    "purpose": "Deploy the learning API with federated Azure identity",
+    "learn": "Trace test, package, Azure login, deployment and health-check stages.",
+    "run": "Manually dispatch only after azure_execution/ci_cd/README.md setup. Creates/updates a live App Service deployment; runs in GitHub Actions."
+  },
+  "Dockerfile": {
+    "purpose": "Describe the learning API container",
+    "learn": "Inspect dependency installation, non-root execution and the Gunicorn server.",
+    "run": "Optional container route only: follow azure_execution/app_service/README.md. Requires Docker outside Databricks; build creates an image and running it starts a persistent server."
+  },
+  "azure_execution/app_service/smoke.py": {
+    "purpose": "Check the deployed application health and ask endpoint",
+    "learn": "Verify reachable deployment and token-protected inference without echoing the token.",
+    "run": "Run python azure_execution/app_service/smoke.py in Azure Cloud Shell after app deployment; enter the HTTPS app URL and hidden demo token."
+  },
+  "capstones/01_safe_retail_faq/run.py": {
+    "purpose": "Combine a safe retail FAQ pipeline",
+    "learn": "Trace safety, tenant-filtered retrieval, grounded answers and citations through one application.",
+    "run": "Import databricks/capstones/01_safe_retail_faq.py as a Databricks source notebook. Start live=false; read capstones/01_safe_retail_faq/RUNBOOK.md."
+  },
+  "capstones/02_receipt_and_refund_workflow/run.py": {
+    "purpose": "Combine receipt extraction and refund review",
+    "learn": "Separate extracted claims from deterministic eligibility and a human-approved simulated effect.",
+    "run": "Import databricks/capstones/02_receipt_and_refund_workflow.py as a Databricks source notebook. Start live=false; read capstones/02_receipt_and_refund_workflow/RUNBOOK.md."
+  },
+  "capstones/03_multilingual_contact_center/run.py": {
+    "purpose": "Build a multilingual contact-center flow",
+    "learn": "Follow PII handling, translation, RAG and output safety; add speech only after the text path works.",
+    "run": "Import databricks/capstones/03_multilingual_contact_center.py as a Databricks source notebook. Start live=false; read capstones/03_multilingual_contact_center/RUNBOOK.md."
+  },
+  "capstones/04_enterprise_research_assistant/run.py": {
+    "purpose": "Build an enterprise research assistant",
+    "learn": "Combine authorized evidence, parallel retrieval and bounded review; compare synthetic analytics with Fabric.",
+    "run": "Import databricks/capstones/04_enterprise_research_assistant.py as a Databricks source notebook. Start live=false; read capstones/04_enterprise_research_assistant/RUNBOOK.md."
+  },
+  "databricks/00_BOOTSTRAP.py": {
+    "purpose": "Extract the course safely onto the Databricks driver",
+    "learn": "Distinguish temporary driver code from durable Unity Catalog output; reject unsafe ZIP paths.",
+    "run": "Import this source notebook into Databricks. Set zip_path and output_root to your volume paths; run first and after compute restarts. It replaces the temporary extracted course copy."
+  },
+  "databricks/capstones/01_safe_retail_faq.py": {
+    "purpose": "Launch: Combine a safe retail FAQ pipeline",
+    "learn": "Trace safety, tenant-filtered retrieval, grounded answers and citations through one application.",
+    "run": "Import databricks/capstones/01_safe_retail_faq.py as a Databricks source notebook. Start live=false; read capstones/01_safe_retail_faq/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/capstones/02_receipt_and_refund_workflow.py": {
+    "purpose": "Launch: Combine receipt extraction and refund review",
+    "learn": "Separate extracted claims from deterministic eligibility and a human-approved simulated effect.",
+    "run": "Import databricks/capstones/02_receipt_and_refund_workflow.py as a Databricks source notebook. Start live=false; read capstones/02_receipt_and_refund_workflow/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/capstones/03_multilingual_contact_center.py": {
+    "purpose": "Launch: Build a multilingual contact-center flow",
+    "learn": "Follow PII handling, translation, RAG and output safety; add speech only after the text path works.",
+    "run": "Import databricks/capstones/03_multilingual_contact_center.py as a Databricks source notebook. Start live=false; read capstones/03_multilingual_contact_center/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/capstones/04_enterprise_research_assistant.py": {
+    "purpose": "Launch: Build an enterprise research assistant",
+    "learn": "Combine authorized evidence, parallel retrieval and bounded review; compare synthetic analytics with Fabric.",
+    "run": "Import databricks/capstones/04_enterprise_research_assistant.py as a Databricks source notebook. Start live=false; read capstones/04_enterprise_research_assistant/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/03_generation_controls.py": {
+    "purpose": "Launch: Experiment with generation controls",
+    "learn": "Change temperature or output budget one at a time; compare code generation without executing generated code.",
+    "run": "Import databricks/extensions/03_generation_controls.py as a Databricks source notebook. Start live=false; read extensions/generation_controls/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/06_domain_extraction.py": {
+    "purpose": "Launch: Extract domain-specific structured facts",
+    "learn": "Validate a domain schema and compare extracted facts with the supplied source text.",
+    "run": "Import databricks/extensions/06_domain_extraction.py as a Databricks source notebook. Start live=false; read extensions/domain_extraction/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/10_custom_enrichment.py": {
+    "purpose": "Launch: Handle a custom Search enrichment batch",
+    "learn": "Preserve record IDs, emit product codes and report per-record errors using the custom skill contract.",
+    "run": "Import databricks/extensions/10_custom_enrichment.py as a Databricks source notebook. Start live=false; read extensions/custom_skill/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/12_rest_transport.py": {
+    "purpose": "Launch: Call a real local HTTP tool",
+    "learn": "Observe request/response transport using a loopback server with a bounded client timeout and shutdown.",
+    "run": "Import databricks/extensions/12_rest_transport.py as a Databricks source notebook. Start live=false; read extensions/rest_tools/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/15_memory_summary.py": {
+    "purpose": "Launch: Summarize conversation memory",
+    "learn": "Compare a summary with the original messages and explain what compression can lose.",
+    "run": "Import databricks/extensions/15_memory_summary.py as a Databricks source notebook. Start live=false; read labs/15_memory_windows_redis_and_cosmos/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/19_group_discussion.py": {
+    "purpose": "Launch: Run a bounded agent discussion",
+    "learn": "Track speaker turns and terminate a discussion instead of allowing an unbounded autonomous loop.",
+    "run": "Import databricks/extensions/19_group_discussion.py as a Databricks source notebook. Start live=false; read labs/19_multi_agent_orchestration_and_reflection/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/20_logic_app_submit.py": {
+    "purpose": "Launch: Submit a request to a Logic App",
+    "learn": "Treat the signed trigger URL as a secret and distinguish submission from completed human approval.",
+    "run": "Import databricks/extensions/20_logic_app_submit.py as a Databricks source notebook. Start live=false; read extensions/logic_app_submit/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/23_rag_regression.py": {
+    "purpose": "Launch: Evaluate the complete RAG application",
+    "learn": "Check retrieved citations, safety and expected responses across a small regression dataset.",
+    "run": "Import databricks/extensions/23_rag_regression.py as a Databricks source notebook. Start live=false; read extensions/rag_evaluation/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/24_visual_evidence.py": {
+    "purpose": "Launch: Combine OCR with visual reasoning",
+    "learn": "Compare extracted text and image evidence and screen image/text injection risks.",
+    "run": "Import databricks/extensions/24_visual_evidence.py as a Databricks source notebook. Start live=false; read extensions/visual_evidence/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/26_agentic_analyzer.py": {
+    "purpose": "Launch: Explore an agentic document analyzer preview",
+    "learn": "Distinguish analyzer creation from analysis and understand preview access, model mappings and quota prerequisites.",
+    "run": "Import databricks/extensions/26_agentic_analyzer.py as a Databricks source notebook. Start live=false; read extensions/agentic_analyzer/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/26_multimodal_ingestion.py": {
+    "purpose": "Launch: Index normalized multimodal evidence",
+    "learn": "Turn extracted document/audio/video evidence into searchable records with provenance and tenant fields.",
+    "run": "Import databricks/extensions/26_multimodal_ingestion.py as a Databricks source notebook. Start live=false; read extensions/multimodal_ingestion/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/extensions/30_cosmos_vector.py": {
+    "purpose": "Launch: Query an operational vector store",
+    "learn": "Inspect Cosmos vector configuration and contrast operational storage with a dedicated search index.",
+    "run": "Import databricks/extensions/30_cosmos_vector.py as a Databricks source notebook. Start live=false; read labs/30_enterprise_grounding_and_operational_data/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/00_environment_and_project_tour.py": {
+    "purpose": "Launch: Inspect the course environment",
+    "learn": "Locate configuration, synthetic data and saved evidence before making service calls.",
+    "run": "Import databricks/labs/00_environment_and_project_tour.py as a Databricks source notebook. Start live=false; read labs/00_environment_and_project_tour/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/01_secrets_identity_and_key_vault.py": {
+    "purpose": "Launch: Read a secret through a trusted identity",
+    "learn": "Distinguish authentication, authorization, secret scope access and Key Vault data permissions.",
+    "run": "Import databricks/labs/01_secrets_identity_and_key_vault.py as a Databricks source notebook. Start live=false; read labs/01_secrets_identity_and_key_vault/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/02_model_calls_and_routing.py": {
+    "purpose": "Launch: Compare and route model calls",
+    "learn": "Choose deployments by task needs and explain the latency, cost and capability tradeoff.",
+    "run": "Import databricks/labs/02_model_calls_and_routing.py as a Databricks source notebook. Start live=false; read labs/02_model_calls_and_routing/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/03_prompts_and_structured_outputs.py": {
+    "purpose": "Launch: Request structured model output",
+    "learn": "Separate prompt instructions from strict output shape and validate returned JSON.",
+    "run": "Import databricks/labs/03_prompts_and_structured_outputs.py as a Databricks source notebook. Start live=false; read labs/03_prompts_and_structured_outputs/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/04_content_safety_input_and_output.py": {
+    "purpose": "Launch: Screen model input and output",
+    "learn": "Apply Content Safety checks on both sides of generation and interpret blocked results.",
+    "run": "Import databricks/labs/04_content_safety_input_and_output.py as a Databricks source notebook. Start live=false; read labs/04_content_safety_input_and_output/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/05_prompt_injection_and_red_teaming.py": {
+    "purpose": "Launch: Probe prompt injection defenses",
+    "learn": "Treat retrieved text as untrusted data and distinguish a local rule from a hosted safety check.",
+    "run": "Import databricks/labs/05_prompt_injection_and_red_teaming.py as a Databricks source notebook. Start live=false; read labs/05_prompt_injection_and_red_teaming/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/06_language_and_pii_preprocessing.py": {
+    "purpose": "Launch: Analyze language and remove PII",
+    "learn": "Inspect entities, sentiment and summaries while minimizing sensitive text sent downstream.",
+    "run": "Import databricks/labs/06_language_and_pii_preprocessing.py as a Databricks source notebook. Start live=false; read labs/06_language_and_pii_preprocessing/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/07_translation_and_multilingual_flow.py": {
+    "purpose": "Launch: Translate a support question",
+    "learn": "Track source/target language and understand how translation fits before and after reasoning.",
+    "run": "Import databricks/labs/07_translation_and_multilingual_flow.py as a Databricks source notebook. Start live=false; read labs/07_translation_and_multilingual_flow/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/08_embeddings_and_chunking.py": {
+    "purpose": "Launch: Chunk text and compare embeddings",
+    "learn": "Explain overlap, vector dimensions and why similarity does not establish factual truth.",
+    "run": "Import databricks/labs/08_embeddings_and_chunking.py as a Databricks source notebook. Start live=false; read labs/08_embeddings_and_chunking/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/09_azure_search_vector_hybrid_semantic.py": {
+    "purpose": "Launch: Build and query a search index",
+    "learn": "Compare keyword, vector, hybrid and semantic retrieval while retaining trusted tenant filters.",
+    "run": "Import databricks/labs/09_azure_search_vector_hybrid_semantic.py as a Databricks source notebook. Start live=false; read labs/09_azure_search_vector_hybrid_semantic/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/10_ingestion_ocr_and_enrichment.py": {
+    "purpose": "Launch: Plan OCR and enrichment ingestion",
+    "learn": "Follow the portal indexer exercise and inspect ingestion errors; the notebook is a local planning exercise.",
+    "run": "Import databricks/labs/10_ingestion_ocr_and_enrichment.py as a Databricks source notebook. Start live=false; read labs/10_ingestion_ocr_and_enrichment/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/11_grounded_answers_with_rag.py": {
+    "purpose": "Launch: Generate an answer grounded in retrieved evidence",
+    "learn": "Trace retrieval, context assembly, citations and abstention; valid source IDs alone do not prove correctness.",
+    "run": "Import databricks/labs/11_grounded_answers_with_rag.py as a Databricks source notebook. Start live=false; read labs/11_grounded_answers_with_rag/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/12_function_calling_and_rest_contracts.py": {
+    "purpose": "Launch: Execute validated model tool requests",
+    "learn": "Read a JSON tool schema, enforce permissions and return bounded tool results to the model.",
+    "run": "Import databricks/labs/12_function_calling_and_rest_contracts.py as a Databricks source notebook. Start live=false; read labs/12_function_calling_and_rest_contracts/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/13_dynamic_instructions_and_authorization.py": {
+    "purpose": "Launch: Enforce application authorization",
+    "learn": "Use trusted identity and explicit allowed tools instead of trusting role instructions in a prompt.",
+    "run": "Import databricks/labs/13_dynamic_instructions_and_authorization.py as a Databricks source notebook. Start live=false; read labs/13_dynamic_instructions_and_authorization/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/14_retries_idempotency_and_caching.py": {
+    "purpose": "Launch: Control retries, duplicates and caching",
+    "learn": "Understand retry limits, idempotency keys, approval state and identity-aware cache isolation.",
+    "run": "Import databricks/labs/14_retries_idempotency_and_caching.py as a Databricks source notebook. Start live=false; read labs/14_retries_idempotency_and_caching/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/15_memory_windows_redis_and_cosmos.py": {
+    "purpose": "Launch: Persist and bound conversation memory",
+    "learn": "Compare local windows with Redis/Cosmos persistence, expiry and user/session separation.",
+    "run": "Import databricks/labs/15_memory_windows_redis_and_cosmos.py as a Databricks source notebook. Start live=false; read labs/15_memory_windows_redis_and_cosmos/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/16_foundry_managed_agent.py": {
+    "purpose": "Launch: Create a managed Foundry agent",
+    "learn": "Follow project identity, agent version creation, conversation state and response lifecycle.",
+    "run": "Import databricks/labs/16_foundry_managed_agent.py as a Databricks source notebook. Start live=false; read labs/16_foundry_managed_agent/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/17_agentic_retrieval_and_knowledge_tools.py": {
+    "purpose": "Launch: Connect retrieval to an agent tool",
+    "learn": "Compare the synthetic policy backend with the Azure Search variant without dropping authorization.",
+    "run": "Import databricks/labs/17_agentic_retrieval_and_knowledge_tools.py as a Databricks source notebook. Start live=false; read labs/17_agentic_retrieval_and_knowledge_tools/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/18_sequential_and_concurrent_workflows.py": {
+    "purpose": "Launch: Compare sequential and concurrent workflows",
+    "learn": "Measure independent tasks and inspect partial failure without treating parallel execution as reasoning.",
+    "run": "Import databricks/labs/18_sequential_and_concurrent_workflows.py as a Databricks source notebook. Start live=false; read labs/18_sequential_and_concurrent_workflows/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/19_multi_agent_orchestration_and_reflection.py": {
+    "purpose": "Launch: Coordinate agents and bounded reflection",
+    "learn": "Separate writer/reviewer responsibilities, handoff and stop conditions; critiques can still be wrong.",
+    "run": "Import databricks/labs/19_multi_agent_orchestration_and_reflection.py as a Databricks source notebook. Start live=false; read labs/19_multi_agent_orchestration_and_reflection/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/20_human_approvals_and_logic_apps.py": {
+    "purpose": "Launch: Require a human approval before an effect",
+    "learn": "Inspect pending, approved, rejected and expired states; a simulated ledger is not a payment system.",
+    "run": "Import databricks/labs/20_human_approvals_and_logic_apps.py as a Databricks source notebook. Start live=false; read labs/20_human_approvals_and_logic_apps/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/21_mcp_server_and_client.py": {
+    "purpose": "Launch: Connect an MCP client to a local tool server",
+    "learn": "Discover and invoke a tool over stdio; offline fixtures do not prove the MCP protocol works.",
+    "run": "Import databricks/labs/21_mcp_server_and_client.py as a Databricks source notebook. Start live=false; read labs/21_mcp_server_and_client/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/22_tracing_and_loop_diagnostics.py": {
+    "purpose": "Launch: Trace workflow execution",
+    "learn": "Inspect spans, latency and loop diagnostics without logging secrets or sensitive prompts.",
+    "run": "Import databricks/labs/22_tracing_and_loop_diagnostics.py as a Databricks source notebook. Start live=false; read labs/22_tracing_and_loop_diagnostics/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/23_evaluation_datasets_and_regression_gates.py": {
+    "purpose": "Launch: Evaluate a dataset and enforce a quality gate",
+    "learn": "Distinguish deterministic checks from model judges and inspect examples behind aggregate scores.",
+    "run": "Import databricks/labs/23_evaluation_datasets_and_regression_gates.py as a Databricks source notebook. Start live=false; read labs/23_evaluation_datasets_and_regression_gates/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/24_vision_accessibility_and_visual_safety.py": {
+    "purpose": "Launch: Describe images and screen visual content",
+    "learn": "Generate accessible descriptions and inspect safety results without assuming every visual policy is detected.",
+    "run": "Import databricks/labs/24_vision_accessibility_and_visual_safety.py as a Databricks source notebook. Start live=false; read labs/24_vision_accessibility_and_visual_safety/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/25_document_intelligence_receipts_and_layout.py": {
+    "purpose": "Launch: Extract document fields and layout",
+    "learn": "Compare receipt, layout, read and custom models and inspect confidence and source layout.",
+    "run": "Import databricks/labs/25_document_intelligence_receipts_and_layout.py as a Databricks source notebook. Start live=false; read labs/25_document_intelligence_receipts_and_layout/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/26_content_understanding_analyzers.py": {
+    "purpose": "Launch: Analyze content with Content Understanding",
+    "learn": "Read structured analyzer output and understand endpoint, API version and analyzer selection.",
+    "run": "Import databricks/labs/26_content_understanding_analyzers.py as a Databricks source notebook. Start live=false; read labs/26_content_understanding_analyzers/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/27_speech_transcription_synthesis_translation.py": {
+    "purpose": "Launch: Synthesize, transcribe and translate speech",
+    "learn": "Use file audio without a microphone, inspect recognition outcomes and understand custom endpoints.",
+    "run": "Import databricks/labs/27_speech_transcription_synthesis_translation.py as a Databricks source notebook. Start live=false; read labs/27_speech_transcription_synthesis_translation/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/28_image_generation_and_mask_editing.py": {
+    "purpose": "Launch: Generate and edit images",
+    "learn": "Distinguish text generation from mask-based edits and check model-specific media requirements.",
+    "run": "Import databricks/labs/28_image_generation_and_mask_editing.py as a Databricks source notebook. Start live=false; read labs/28_image_generation_and_mask_editing/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/29_video_generation_and_editing.py": {
+    "purpose": "Launch: Generate, resume and remix video jobs",
+    "learn": "Persist an asynchronous job ID, poll with limits and resume without submitting a duplicate paid job.",
+    "run": "Import databricks/labs/29_video_generation_and_editing.py as a Databricks source notebook. Start live=false; read labs/29_video_generation_and_editing/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/30_enterprise_grounding_and_operational_data.py": {
+    "purpose": "Launch: Ground answers in enterprise data",
+    "learn": "Separate synthetic evidence from authorized Fabric SQL and parameterized operational data access.",
+    "run": "Import databricks/labs/30_enterprise_grounding_and_operational_data.py as a Databricks source notebook. Start live=false; read labs/30_enterprise_grounding_and_operational_data/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/31_infrastructure_deployment_and_ci_cd.py": {
+    "purpose": "Launch: Prepare deployment and infrastructure",
+    "learn": "Read the Bicep, API packaging and CI/CD path; deploy resources only through the separate Azure instructions.",
+    "run": "Import databricks/labs/31_infrastructure_deployment_and_ci_cd.py as a Databricks source notebook. Start live=false; read labs/31_infrastructure_deployment_and_ci_cd/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "databricks/labs/32_cost_quotas_scaling_and_drift.py": {
+    "purpose": "Launch: Budget cost, quotas and drift checks",
+    "learn": "Interpret capacity and regression signals; local estimates are not subscription billing measurements.",
+    "run": "Import databricks/labs/32_cost_quotas_scaling_and_drift.py as a Databricks source notebook. Start live=false; read labs/32_cost_quotas_scaling_and_drift/RUNBOOK.md. Execute cells in order; after a live package install, restart Python once then run the final cell."
+  },
+  "extensions/agentic_analyzer/run.py": {
+    "purpose": "Explore an agentic document analyzer preview",
+    "learn": "Distinguish analyzer creation from analysis and understand preview access, model mappings and quota prerequisites.",
+    "run": "Import databricks/extensions/26_agentic_analyzer.py as a Databricks source notebook. Start live=false; read extensions/agentic_analyzer/RUNBOOK.md."
+  },
+  "extensions/custom_skill/handler.py": {
+    "purpose": "Handle a custom Search enrichment batch",
+    "learn": "Preserve record IDs, emit product codes and report per-record errors using the custom skill contract.",
+    "run": "Import databricks/extensions/10_custom_enrichment.py as a Databricks source notebook. Start live=false; read extensions/custom_skill/RUNBOOK.md."
+  },
+  "extensions/domain_extraction/run.py": {
+    "purpose": "Extract domain-specific structured facts",
+    "learn": "Validate a domain schema and compare extracted facts with the supplied source text.",
+    "run": "Import databricks/extensions/06_domain_extraction.py as a Databricks source notebook. Start live=false; read extensions/domain_extraction/RUNBOOK.md."
+  },
+  "extensions/generation_controls/run.py": {
+    "purpose": "Experiment with generation controls",
+    "learn": "Change temperature or output budget one at a time; compare code generation without executing generated code.",
+    "run": "Import databricks/extensions/03_generation_controls.py as a Databricks source notebook. Start live=false; read extensions/generation_controls/RUNBOOK.md."
+  },
+  "extensions/logic_app_submit/run.py": {
+    "purpose": "Submit a request to a Logic App",
+    "learn": "Treat the signed trigger URL as a secret and distinguish submission from completed human approval.",
+    "run": "Import databricks/extensions/20_logic_app_submit.py as a Databricks source notebook. Start live=false; read extensions/logic_app_submit/RUNBOOK.md."
+  },
+  "extensions/multimodal_ingestion/run.py": {
+    "purpose": "Index normalized multimodal evidence",
+    "learn": "Turn extracted document/audio/video evidence into searchable records with provenance and tenant fields.",
+    "run": "Import databricks/extensions/26_multimodal_ingestion.py as a Databricks source notebook. Start live=false; read extensions/multimodal_ingestion/RUNBOOK.md."
+  },
+  "extensions/rag_evaluation/run.py": {
+    "purpose": "Evaluate the complete RAG application",
+    "learn": "Check retrieved citations, safety and expected responses across a small regression dataset.",
+    "run": "Import databricks/extensions/23_rag_regression.py as a Databricks source notebook. Start live=false; read extensions/rag_evaluation/RUNBOOK.md."
+  },
+  "extensions/rest_tools/client.py": {
+    "purpose": "Read the local policy HTTP endpoint",
+    "learn": "Observe a fixed allowlisted URL and client timeout.",
+    "run": "Optional terminal demonstration after starting server.py: python extensions/rest_tools/client.py. Prefer the managed notebook for Databricks."
+  },
+  "extensions/rest_tools/run.py": {
+    "purpose": "Call a real local HTTP tool",
+    "learn": "Observe request/response transport using a loopback server with a bounded client timeout and shutdown.",
+    "run": "Import databricks/extensions/12_rest_transport.py as a Databricks source notebook. Start live=false; read extensions/rest_tools/RUNBOOK.md."
+  },
+  "extensions/rest_tools/server.py": {
+    "purpose": "Serve the local synthetic policy HTTP endpoint",
+    "learn": "Inspect route handling and JSON HTTP response construction.",
+    "run": "Prefer databricks/extensions/12_rest_transport.py, which manages start and stop. Standalone: PYTHONPATH=src python extensions/rest_tools/server.py; blocks until Ctrl+C."
+  },
+  "extensions/visual_evidence/run.py": {
+    "purpose": "Combine OCR with visual reasoning",
+    "learn": "Compare extracted text and image evidence and screen image/text injection risks.",
+    "run": "Import databricks/extensions/24_visual_evidence.py as a Databricks source notebook. Start live=false; read extensions/visual_evidence/RUNBOOK.md."
+  },
+  "infra/main.bicep": {
+    "purpose": "Declare the learning Azure infrastructure",
+    "learn": "Understand parameters, resource relationships and deployment side effects.",
+    "run": "Follow azure_execution/cloud_shell/README.md. Review parameters and Azure what-if before deployment; this creates billable resources."
+  },
+  "labs/00_environment_and_project_tour/run.py": {
+    "purpose": "Inspect the course environment",
+    "learn": "Locate configuration, synthetic data and saved evidence before making service calls.",
+    "run": "Import databricks/labs/00_environment_and_project_tour.py as a Databricks source notebook. Start live=false; read labs/00_environment_and_project_tour/RUNBOOK.md."
+  },
+  "labs/01_secrets_identity_and_key_vault/run.py": {
+    "purpose": "Read a secret through a trusted identity",
+    "learn": "Distinguish authentication, authorization, secret scope access and Key Vault data permissions.",
+    "run": "Import databricks/labs/01_secrets_identity_and_key_vault.py as a Databricks source notebook. Start live=false; read labs/01_secrets_identity_and_key_vault/RUNBOOK.md."
+  },
+  "labs/02_model_calls_and_routing/run.py": {
+    "purpose": "Compare and route model calls",
+    "learn": "Choose deployments by task needs and explain the latency, cost and capability tradeoff.",
+    "run": "Import databricks/labs/02_model_calls_and_routing.py as a Databricks source notebook. Start live=false; read labs/02_model_calls_and_routing/RUNBOOK.md."
+  },
+  "labs/03_prompts_and_structured_outputs/run.py": {
+    "purpose": "Request structured model output",
+    "learn": "Separate prompt instructions from strict output shape and validate returned JSON.",
+    "run": "Import databricks/labs/03_prompts_and_structured_outputs.py as a Databricks source notebook. Start live=false; read labs/03_prompts_and_structured_outputs/RUNBOOK.md."
+  },
+  "labs/04_content_safety_input_and_output/run.py": {
+    "purpose": "Screen model input and output",
+    "learn": "Apply Content Safety checks on both sides of generation and interpret blocked results.",
+    "run": "Import databricks/labs/04_content_safety_input_and_output.py as a Databricks source notebook. Start live=false; read labs/04_content_safety_input_and_output/RUNBOOK.md."
+  },
+  "labs/05_prompt_injection_and_red_teaming/run.py": {
+    "purpose": "Probe prompt injection defenses",
+    "learn": "Treat retrieved text as untrusted data and distinguish a local rule from a hosted safety check.",
+    "run": "Import databricks/labs/05_prompt_injection_and_red_teaming.py as a Databricks source notebook. Start live=false; read labs/05_prompt_injection_and_red_teaming/RUNBOOK.md."
+  },
+  "labs/06_language_and_pii_preprocessing/run.py": {
+    "purpose": "Analyze language and remove PII",
+    "learn": "Inspect entities, sentiment and summaries while minimizing sensitive text sent downstream.",
+    "run": "Import databricks/labs/06_language_and_pii_preprocessing.py as a Databricks source notebook. Start live=false; read labs/06_language_and_pii_preprocessing/RUNBOOK.md."
+  },
+  "labs/07_translation_and_multilingual_flow/run.py": {
+    "purpose": "Translate a support question",
+    "learn": "Track source/target language and understand how translation fits before and after reasoning.",
+    "run": "Import databricks/labs/07_translation_and_multilingual_flow.py as a Databricks source notebook. Start live=false; read labs/07_translation_and_multilingual_flow/RUNBOOK.md."
+  },
+  "labs/08_embeddings_and_chunking/run.py": {
+    "purpose": "Chunk text and compare embeddings",
+    "learn": "Explain overlap, vector dimensions and why similarity does not establish factual truth.",
+    "run": "Import databricks/labs/08_embeddings_and_chunking.py as a Databricks source notebook. Start live=false; read labs/08_embeddings_and_chunking/RUNBOOK.md."
+  },
+  "labs/09_azure_search_vector_hybrid_semantic/run.py": {
+    "purpose": "Build and query a search index",
+    "learn": "Compare keyword, vector, hybrid and semantic retrieval while retaining trusted tenant filters.",
+    "run": "Import databricks/labs/09_azure_search_vector_hybrid_semantic.py as a Databricks source notebook. Start live=false; read labs/09_azure_search_vector_hybrid_semantic/RUNBOOK.md."
+  },
+  "labs/10_ingestion_ocr_and_enrichment/run.py": {
+    "purpose": "Plan OCR and enrichment ingestion",
+    "learn": "Follow the portal indexer exercise and inspect ingestion errors; the notebook is a local planning exercise.",
+    "run": "Import databricks/labs/10_ingestion_ocr_and_enrichment.py as a Databricks source notebook. Start live=false; read labs/10_ingestion_ocr_and_enrichment/RUNBOOK.md."
+  },
+  "labs/11_grounded_answers_with_rag/run.py": {
+    "purpose": "Generate an answer grounded in retrieved evidence",
+    "learn": "Trace retrieval, context assembly, citations and abstention; valid source IDs alone do not prove correctness.",
+    "run": "Import databricks/labs/11_grounded_answers_with_rag.py as a Databricks source notebook. Start live=false; read labs/11_grounded_answers_with_rag/RUNBOOK.md."
+  },
+  "labs/12_function_calling_and_rest_contracts/run.py": {
+    "purpose": "Execute validated model tool requests",
+    "learn": "Read a JSON tool schema, enforce permissions and return bounded tool results to the model.",
+    "run": "Import databricks/labs/12_function_calling_and_rest_contracts.py as a Databricks source notebook. Start live=false; read labs/12_function_calling_and_rest_contracts/RUNBOOK.md."
+  },
+  "labs/13_dynamic_instructions_and_authorization/run.py": {
+    "purpose": "Enforce application authorization",
+    "learn": "Use trusted identity and explicit allowed tools instead of trusting role instructions in a prompt.",
+    "run": "Import databricks/labs/13_dynamic_instructions_and_authorization.py as a Databricks source notebook. Start live=false; read labs/13_dynamic_instructions_and_authorization/RUNBOOK.md."
+  },
+  "labs/14_retries_idempotency_and_caching/run.py": {
+    "purpose": "Control retries, duplicates and caching",
+    "learn": "Understand retry limits, idempotency keys, approval state and identity-aware cache isolation.",
+    "run": "Import databricks/labs/14_retries_idempotency_and_caching.py as a Databricks source notebook. Start live=false; read labs/14_retries_idempotency_and_caching/RUNBOOK.md."
+  },
+  "labs/15_memory_windows_redis_and_cosmos/run.py": {
+    "purpose": "Persist and bound conversation memory",
+    "learn": "Compare local windows with Redis/Cosmos persistence, expiry and user/session separation.",
+    "run": "Import databricks/labs/15_memory_windows_redis_and_cosmos.py as a Databricks source notebook. Start live=false; read labs/15_memory_windows_redis_and_cosmos/RUNBOOK.md."
+  },
+  "labs/15_memory_windows_redis_and_cosmos/summarize.py": {
+    "purpose": "Summarize conversation memory",
+    "learn": "Compare a summary with the original messages and explain what compression can lose.",
+    "run": "Import databricks/extensions/15_memory_summary.py as a Databricks source notebook. Start live=false; read labs/15_memory_windows_redis_and_cosmos/RUNBOOK.md."
+  },
+  "labs/16_foundry_managed_agent/run.py": {
+    "purpose": "Create a managed Foundry agent",
+    "learn": "Follow project identity, agent version creation, conversation state and response lifecycle.",
+    "run": "Import databricks/labs/16_foundry_managed_agent.py as a Databricks source notebook. Start live=false; read labs/16_foundry_managed_agent/RUNBOOK.md."
+  },
+  "labs/17_agentic_retrieval_and_knowledge_tools/run.py": {
+    "purpose": "Connect retrieval to an agent tool",
+    "learn": "Compare the synthetic policy backend with the Azure Search variant without dropping authorization.",
+    "run": "Import databricks/labs/17_agentic_retrieval_and_knowledge_tools.py as a Databricks source notebook. Start live=false; read labs/17_agentic_retrieval_and_knowledge_tools/RUNBOOK.md."
+  },
+  "labs/18_sequential_and_concurrent_workflows/run.py": {
+    "purpose": "Compare sequential and concurrent workflows",
+    "learn": "Measure independent tasks and inspect partial failure without treating parallel execution as reasoning.",
+    "run": "Import databricks/labs/18_sequential_and_concurrent_workflows.py as a Databricks source notebook. Start live=false; read labs/18_sequential_and_concurrent_workflows/RUNBOOK.md."
+  },
+  "labs/19_multi_agent_orchestration_and_reflection/group_chat.py": {
+    "purpose": "Run a bounded agent discussion",
+    "learn": "Track speaker turns and terminate a discussion instead of allowing an unbounded autonomous loop.",
+    "run": "Import databricks/extensions/19_group_discussion.py as a Databricks source notebook. Start live=false; read labs/19_multi_agent_orchestration_and_reflection/RUNBOOK.md."
+  },
+  "labs/19_multi_agent_orchestration_and_reflection/run.py": {
+    "purpose": "Coordinate agents and bounded reflection",
+    "learn": "Separate writer/reviewer responsibilities, handoff and stop conditions; critiques can still be wrong.",
+    "run": "Import databricks/labs/19_multi_agent_orchestration_and_reflection.py as a Databricks source notebook. Start live=false; read labs/19_multi_agent_orchestration_and_reflection/RUNBOOK.md."
+  },
+  "labs/20_human_approvals_and_logic_apps/run.py": {
+    "purpose": "Require a human approval before an effect",
+    "learn": "Inspect pending, approved, rejected and expired states; a simulated ledger is not a payment system.",
+    "run": "Import databricks/labs/20_human_approvals_and_logic_apps.py as a Databricks source notebook. Start live=false; read labs/20_human_approvals_and_logic_apps/RUNBOOK.md."
+  },
+  "labs/21_mcp_server_and_client/run.py": {
+    "purpose": "Connect an MCP client to a local tool server",
+    "learn": "Discover and invoke a tool over stdio; offline fixtures do not prove the MCP protocol works.",
+    "run": "Import databricks/labs/21_mcp_server_and_client.py as a Databricks source notebook. Start live=false; read labs/21_mcp_server_and_client/RUNBOOK.md."
+  },
+  "labs/21_mcp_server_and_client/server.py": {
+    "purpose": "Serve policy tools over MCP stdio",
+    "learn": "Understand tool registration and the protocol server lifecycle.",
+    "run": "Started by lab 21 live=true after installing requirements/mcp.txt. Do not run as an ordinary notebook cell; the server waits for client messages."
+  },
+  "labs/22_tracing_and_loop_diagnostics/run.py": {
+    "purpose": "Trace workflow execution",
+    "learn": "Inspect spans, latency and loop diagnostics without logging secrets or sensitive prompts.",
+    "run": "Import databricks/labs/22_tracing_and_loop_diagnostics.py as a Databricks source notebook. Start live=false; read labs/22_tracing_and_loop_diagnostics/RUNBOOK.md."
+  },
+  "labs/23_evaluation_datasets_and_regression_gates/run.py": {
+    "purpose": "Evaluate a dataset and enforce a quality gate",
+    "learn": "Distinguish deterministic checks from model judges and inspect examples behind aggregate scores.",
+    "run": "Import databricks/labs/23_evaluation_datasets_and_regression_gates.py as a Databricks source notebook. Start live=false; read labs/23_evaluation_datasets_and_regression_gates/RUNBOOK.md."
+  },
+  "labs/24_vision_accessibility_and_visual_safety/run.py": {
+    "purpose": "Describe images and screen visual content",
+    "learn": "Generate accessible descriptions and inspect safety results without assuming every visual policy is detected.",
+    "run": "Import databricks/labs/24_vision_accessibility_and_visual_safety.py as a Databricks source notebook. Start live=false; read labs/24_vision_accessibility_and_visual_safety/RUNBOOK.md."
+  },
+  "labs/25_document_intelligence_receipts_and_layout/run.py": {
+    "purpose": "Extract document fields and layout",
+    "learn": "Compare receipt, layout, read and custom models and inspect confidence and source layout.",
+    "run": "Import databricks/labs/25_document_intelligence_receipts_and_layout.py as a Databricks source notebook. Start live=false; read labs/25_document_intelligence_receipts_and_layout/RUNBOOK.md."
+  },
+  "labs/26_content_understanding_analyzers/run.py": {
+    "purpose": "Analyze content with Content Understanding",
+    "learn": "Read structured analyzer output and understand endpoint, API version and analyzer selection.",
+    "run": "Import databricks/labs/26_content_understanding_analyzers.py as a Databricks source notebook. Start live=false; read labs/26_content_understanding_analyzers/RUNBOOK.md."
+  },
+  "labs/27_speech_transcription_synthesis_translation/run.py": {
+    "purpose": "Synthesize, transcribe and translate speech",
+    "learn": "Use file audio without a microphone, inspect recognition outcomes and understand custom endpoints.",
+    "run": "Import databricks/labs/27_speech_transcription_synthesis_translation.py as a Databricks source notebook. Start live=false; read labs/27_speech_transcription_synthesis_translation/RUNBOOK.md."
+  },
+  "labs/28_image_generation_and_mask_editing/run.py": {
+    "purpose": "Generate and edit images",
+    "learn": "Distinguish text generation from mask-based edits and check model-specific media requirements.",
+    "run": "Import databricks/labs/28_image_generation_and_mask_editing.py as a Databricks source notebook. Start live=false; read labs/28_image_generation_and_mask_editing/RUNBOOK.md."
+  },
+  "labs/29_video_generation_and_editing/run.py": {
+    "purpose": "Generate, resume and remix video jobs",
+    "learn": "Persist an asynchronous job ID, poll with limits and resume without submitting a duplicate paid job.",
+    "run": "Import databricks/labs/29_video_generation_and_editing.py as a Databricks source notebook. Start live=false; read labs/29_video_generation_and_editing/RUNBOOK.md."
+  },
+  "labs/30_enterprise_grounding_and_operational_data/cosmos_vector.py": {
+    "purpose": "Query an operational vector store",
+    "learn": "Inspect Cosmos vector configuration and contrast operational storage with a dedicated search index.",
+    "run": "Import databricks/extensions/30_cosmos_vector.py as a Databricks source notebook. Start live=false; read labs/30_enterprise_grounding_and_operational_data/RUNBOOK.md."
+  },
+  "labs/30_enterprise_grounding_and_operational_data/run.py": {
+    "purpose": "Ground answers in enterprise data",
+    "learn": "Separate synthetic evidence from authorized Fabric SQL and parameterized operational data access.",
+    "run": "Import databricks/labs/30_enterprise_grounding_and_operational_data.py as a Databricks source notebook. Start live=false; read labs/30_enterprise_grounding_and_operational_data/RUNBOOK.md."
+  },
+  "labs/31_infrastructure_deployment_and_ci_cd/run.py": {
+    "purpose": "Prepare deployment and infrastructure",
+    "learn": "Read the Bicep, API packaging and CI/CD path; deploy resources only through the separate Azure instructions.",
+    "run": "Import databricks/labs/31_infrastructure_deployment_and_ci_cd.py as a Databricks source notebook. Start live=false; read labs/31_infrastructure_deployment_and_ci_cd/RUNBOOK.md."
+  },
+  "labs/32_cost_quotas_scaling_and_drift/run.py": {
+    "purpose": "Budget cost, quotas and drift checks",
+    "learn": "Interpret capacity and regression signals; local estimates are not subscription billing measurements.",
+    "run": "Import databricks/labs/32_cost_quotas_scaling_and_drift.py as a Databricks source notebook. Start live=false; read labs/32_cost_quotas_scaling_and_drift/RUNBOOK.md."
+  },
+  "observability/queries.kql": {
+    "purpose": "Query application telemetry",
+    "learn": "Inspect traces, latency and error signals after telemetry exists.",
+    "run": "Use Azure Portal Application Insights / Log Analytics query editor as described in docs/setup/09_MONITORING.md. Run one query at a time."
+  },
+  "scripts/audit_project.py": {
+    "purpose": "Audit source syntax and internal file references",
+    "learn": "Understand the difference between a static audit and live service verification.",
+    "run": "From project root: python scripts/audit_project.py. Inspect errors=[]; this does not validate Bicep deployment or SDK compatibility."
+  },
+  "scripts/package_deployment.py": {
+    "purpose": "Build a minimal App Service deployment archive",
+    "learn": "Separate deployable application files from course materials and credentials.",
+    "run": "From project root: python scripts/package_deployment.py. Produces outputs/app-deploy.zip; it does not deploy anything."
+  },
+  "scripts/verify_notebooks.py": {
+    "purpose": "Smoke-test all notebook launchers with mock DBUtils",
+    "learn": "Understand what a driver-only mock proves and what requires a real workspace.",
+    "run": "From project root: python scripts/verify_notebooks.py. Expect 49/49 passed; no real Databricks runtime or live package install is used."
+  },
+  "scripts/verify_offline.py": {
+    "purpose": "Execute all main lessons and capstones offline",
+    "learn": "Check deterministic examples without installing Azure SDKs.",
+    "run": "From project root: python scripts/verify_offline.py. Expect 37/37 passed; temporary results are deleted."
+  },
+  "src/academy/__init__.py": {
+    "purpose": "Define the academy package",
+    "learn": "Recognize the package boundary used by lab imports.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/api.py": {
+    "purpose": "Expose the learning RAG and custom-skill HTTP API",
+    "learn": "Inspect bearer-token checks, bounded request bodies, safe errors and the public health route.",
+    "run": "For deployment follow azure_execution/app_service/README.md. For optional local development use PYTHONPATH=src python -m academy.api from the project root; it blocks until Ctrl+C."
+  },
+  "src/academy/cloud.py": {
+    "purpose": "Adapt model, safety and translation service calls",
+    "learn": "Inspect credential selection, HTTP contracts and bounded error handling at a service boundary.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/common.py": {
+    "purpose": "Provide shared inputs, configuration and evidence helpers",
+    "learn": "Follow command arguments, environment access, fixtures, async execution and JSON evidence output.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/domain.py": {
+    "purpose": "Enforce deterministic business and authorization rules",
+    "learn": "Trace tenant/owner checks, allowed roles, ledger transitions, idempotency and role-aware cache keys.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/enrichment.py": {
+    "purpose": "Validate custom Search skill records",
+    "learn": "Separate batch errors from individual record failures and preserve record IDs.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/enterprise.py": {
+    "purpose": "Read authorized Fabric analytics",
+    "learn": "Inspect a parameterized SQL query and native ODBC prerequisite; retrieval time is not data freshness.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/flows.py": {
+    "purpose": "Compose RAG and bounded tool workflows",
+    "learn": "Follow validation, retrieval, model calls and output screening in their actual execution order.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/language.py": {
+    "purpose": "Adapt language-analysis service operations",
+    "learn": "Inspect supported analysis tasks and how service results become application evidence.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/media.py": {
+    "purpose": "Build and analyze sample media",
+    "learn": "Follow media preparation and service payload handling before using your own inputs.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/memory.py": {
+    "purpose": "Store local conversation state with expiry",
+    "learn": "Inspect SQLite user/session keys and character windows; this local example assumes one application tenant.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/notebook.py": {
+    "purpose": "Bridge Databricks widgets to lesson entrypoints",
+    "learn": "Understand secret loading, variant checks, unique output folders, temporary input staging and cleanup.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/search.py": {
+    "purpose": "Implement Azure Search ingestion and retrieval",
+    "learn": "Inspect index fields, vector dimensions, query modes and tenant filters.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/speech.py": {
+    "purpose": "Adapt file-based speech operations",
+    "learn": "Follow transcription/synthesis, result checks and temporary local audio handling.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "src/academy/video.py": {
+    "purpose": "Manage asynchronous video operations",
+    "learn": "Track create, resume, remix, bounded polling and persistent job IDs.",
+    "run": "Imported by lesson code; do not run this file directly. Follow the importing lesson in MASTER_GUIDE.md."
+  },
+  "tests/test_boundaries.py": {
+    "purpose": "Protect behavior with automated regression tests",
+    "learn": "Check cross user order denied, unknown tool denied, extra argument denied, tenant retrieval, wrong tenant evidence denied and related cases.",
+    "run": "From project root: PYTHONPATH=src python -m unittest discover -s tests -v. Service doubles are not live Azure tests; test names describe the assertions."
+  },
+  "tests/test_capstone_variants.py": {
+    "purpose": "Protect behavior with automated regression tests",
+    "learn": "Check async runner inside notebook loop, speech contact center composition, fabric research composition.",
+    "run": "From project root: PYTHONPATH=src python -m unittest discover -s tests -v. Service doubles are not live Azure tests; test names describe the assertions."
+  },
+  "tests/test_cloud_contracts.py": {
+    "purpose": "Protect behavior with automated regression tests",
+    "learn": "Check https required, write is not retried, retry after not overridden, failures do not expose body.",
+    "run": "From project root: PYTHONPATH=src python -m unittest discover -s tests -v. Service doubles are not live Azure tests; test names describe the assertions."
+  },
+  "tests/test_final_review.py": {
+    "purpose": "Protect behavior with automated regression tests",
+    "learn": "Check unknown role denied before backend, cross tenant approval denied, same user other tenant cannot execute, legacy ledger fails closed, role change does not reuse cache and related cases.",
+    "run": "From project root: PYTHONPATH=src python -m unittest discover -s tests -v. Service doubles are not live Azure tests; test names describe the assertions."
+  },
+  "tests/test_review_regressions.py": {
+    "purpose": "Protect behavior with automated regression tests",
+    "learn": "Check config resets omitted values, config rejects secrets and nonobjects, key only adapters preserve auth contract, video keyless loads identity, azure search tool keeps tenant and related cases.",
+    "run": "From project root: PYTHONPATH=src python -m unittest discover -s tests -v. Service doubles are not live Azure tests; test names describe the assertions."
+  }
+}

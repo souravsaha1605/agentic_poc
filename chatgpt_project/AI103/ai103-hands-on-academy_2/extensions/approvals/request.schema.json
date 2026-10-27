@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "order_id": {
+      "type": "string"
+    },
+    "amount_paise": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "INR"
+      ]
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "request_id",
+    "order_id",
+    "amount_paise",
+    "currency",
+    "evidence_ids"
+  ],
+  "additionalProperties": false
+}

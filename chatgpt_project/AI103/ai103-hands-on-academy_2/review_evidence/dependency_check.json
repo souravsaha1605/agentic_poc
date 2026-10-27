@@ -1,0 +1,7 @@
+{
+  "check": "core dependency resolution dry-run; no packages installed",
+  "exit_code": 1,
+  "passed": false,
+  "limitation": "not a Databricks SDK import/runtime check",
+  "reason": "No matching package distribution accessible"
+}

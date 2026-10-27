@@ -1,0 +1,2 @@
+# Intentionally v1 API, isolated from current MCP v2. See lab 21.
+mcp>=1.12,<2
