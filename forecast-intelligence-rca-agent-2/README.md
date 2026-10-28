@@ -138,6 +138,8 @@ separate platform charges, even with LLM disabled.
    [the reviewed instructions](genie/SPACE_INSTRUCTIONS.md) into its instructions,
    and validate with [the benchmark questions](genie/benchmark_questions.json).
    This setup makes no model API calls itself.
+   Give Genie Code [the guarded operating runbook](docs/GENIE_CODE_RUNBOOK.md)
+   before asking it to diagnose notebook or Space failures.
 4. Supply a verified identity map, then use `LLM Test Notebook.ipynb` as the
    shared notebook harness. It also defaults to zero paid calls.
 
