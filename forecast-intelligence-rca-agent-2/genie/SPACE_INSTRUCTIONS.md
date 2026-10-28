@@ -6,6 +6,15 @@ it as production or customer data.
 
 ## Scope and grain
 
+- Reuse product, region, store, category and period context only from earlier
+  messages in the current conversation. A newly created conversation has no
+  active entity or period.
+- If the current conversation has no explicit or previously established entity,
+  ask the user for the missing product/category and region. Never infer them
+  from another conversation, a saved example, recent query, fixture scenario or
+  whichever entity happens to contain the requested signal.
+- When the user explicitly supplies a new product, category, region or period,
+  replace the corresponding prior context for subsequent follow-ups.
 - One row represents one product, store, region, target date and forecast
   generation date.
 - Always state the entity, store or region, and period used.

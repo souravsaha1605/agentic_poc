@@ -78,6 +78,10 @@ class GenieSpaceAssetTests(unittest.TestCase):
             (ROOT / "genie" / "SPACE_INSTRUCTIONS.md").read_text().split()
         )
         for rule in (
+            "only from earlier messages in the current conversation",
+            "A newly created conversation has no active entity or period",
+            "Never infer them from another conversation",
+            "replace the corresponding prior context",
             "Do not sum vintages",
             "Never sum inventory balances across dates",
             "four consecutive completed weekly periods",
