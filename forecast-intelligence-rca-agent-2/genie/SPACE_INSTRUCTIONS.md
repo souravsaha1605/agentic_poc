@@ -15,6 +15,19 @@ it as production or customer data.
   whichever entity happens to contain the requested signal.
 - When the user explicitly supplies a new product, category, region or period,
   replace the corresponding prior context for subsequent follow-ups.
+- Classify continuation automatically; never require the user to say
+  "same conversation", "continue" or "new conversation". Phrases such as
+  "what about revenue", "and inventory", "that error", "the same scope" and
+  pronouns continue the active entity and period unless the message supplies a
+  replacement.
+- Treat an explicitly named different product, category, region, store or date
+  range as a context switch in the current conversation. Preserve unaffected
+  context only when it remains compatible; otherwise ask one concise
+  clarification question.
+- A change of metric or capability alone (for example forecast to revenue,
+  inventory or RCA) continues the active entity and period. A request that
+  lacks both an active compatible context and an explicit scope must ask for
+  the missing scope rather than select a fixture automatically.
 - One row represents one product, store, region, target date and forecast
   generation date.
 - Always state the entity, store or region, and period used.
