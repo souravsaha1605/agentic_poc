@@ -25,6 +25,7 @@ class CommercialLabTests(unittest.TestCase):
             {
                 "dim_sku": 3,
                 "dim_customer": 3,
+                "dim_fiscal_period": 6,
                 "fact_sku_forecast": 78,
                 "fact_customer_forecast": 130,
                 "fact_sku_budget": 18,
@@ -65,6 +66,31 @@ class CommercialLabTests(unittest.TestCase):
         failures = validate_commercial_data(broken)
         self.assertIn("fact_customer_forecast:UNKNOWN_CUSTOMER", failures)
         self.assertIn("fact_sku_forecast:DUPLICATE_GRAIN", failures)
+
+    def test_unknown_and_overlapping_fiscal_periods_fail(self):
+        broken = copy.deepcopy(self.tables)
+        broken["fact_sku_budget"][0]["fiscal_period"] = "UNKNOWN"
+        self.assertIn(
+            "fact_sku_budget:UNKNOWN_FISCAL_PERIOD",
+            validate_commercial_data(broken),
+        )
+        broken = copy.deepcopy(self.tables)
+        broken["dim_fiscal_period"][1]["period_start"] = "2026-04-30"
+        self.assertIn(
+            "dim_fiscal_period:OVERLAPPING_PERIODS",
+            validate_commercial_data(broken),
+        )
+        broken = copy.deepcopy(self.tables)
+        august = next(
+            row for row in broken["fact_sku_price"]
+            if row["sku_id"] == "SKU-1001"
+            and row["effective_from"] == "2026-08-01"
+        )
+        august["effective_from"] = "2026-07-31"
+        self.assertIn(
+            "fact_sku_price:OVERLAPPING_EFFECTIVE_DATES",
+            validate_commercial_data(broken),
+        )
 
     @staticmethod
     def metrics(rows):
@@ -174,6 +200,51 @@ class CommercialLabTests(unittest.TestCase):
             self.assertIn(table, combined)
         budget_statement = next(s for s in spark.statements if "vw_genie_sku_budget" in s)
         self.assertNotIn("customer_id", budget_statement)
+        monthly = next(
+            s for s in spark.statements
+            if "vw_genie_sku_monthly_performance AS" in s
+        )
+        self.assertIn("ROW_NUMBER() OVER", monthly)
+        self.assertIn("WHERE vintage_rank=1", monthly)
+        self.assertIn("dim_fiscal_period", monthly)
+        plan = next(
+            s for s in spark.statements
+            if "vw_genie_sku_monthly_plan_vs_actual AS" in s
+        )
+        self.assertIn("vw_genie_sku_monthly_performance", plan)
+        self.assertIn("b.status='APPROVED'", plan)
+        self.assertNotIn("SELECT DISTINCT", combined.upper())
+
+    def test_monthly_plan_vs_actual_benchmark_is_exact(self):
+        rows = [
+            row for row in self.tables["fact_sku_forecast"]
+            if row["sku_id"] == "SKU-1001"
+            and row["target_date"].startswith("2026-08")
+        ]
+        budget = next(
+            row for row in self.tables["fact_sku_budget"]
+            if row["sku_id"] == "SKU-1001"
+            and row["fiscal_period"] == "FY2026-P08"
+        )
+        actual = sum(row["actual_quantity"] for row in rows)
+        forecast = sum(row["forecast_quantity"] for row in rows)
+        self.assertEqual((len(rows), actual, forecast), (5, 635.0, 565.0))
+        self.assertEqual(budget["budget_quantity"], 480.0)
+        self.assertEqual(forecast - actual, -70.0)
+        self.assertEqual(budget["budget_quantity"] - actual, -155.0)
+        self.assertEqual(forecast - budget["budget_quantity"], 85.0)
+        self.assertAlmostEqual(100 * (forecast - actual) / actual, -11.023622, 6)
+        self.assertAlmostEqual(
+            100 * (budget["budget_quantity"] - actual) / actual,
+            -24.409449,
+            6,
+        )
+        self.assertAlmostEqual(
+            100 * (forecast - budget["budget_quantity"])
+            / budget["budget_quantity"],
+            17.708333,
+            6,
+        )
 
     def test_genie_instructions_define_entity_routing(self):
         instructions = " ".join(
@@ -186,6 +257,8 @@ class CommercialLabTests(unittest.TestCase):
             "Price and promotion are valid only for an SKU",
             "state the included SKU IDs",
             "synthetic records",
+            "Do not join the underlying",
+            "Never use `SELECT DISTINCT`",
         ):
             self.assertIn(phrase, instructions)
 

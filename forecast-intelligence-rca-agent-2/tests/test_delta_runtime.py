@@ -345,6 +345,7 @@ class DeltaRuntimeTests(unittest.TestCase):
         expected_counts = {
             "dim_sku": 3,
             "dim_customer": 3,
+            "dim_fiscal_period": 6,
             "fact_sku_forecast": 78,
             "fact_customer_forecast": 130,
             "fact_sku_budget": 18,
@@ -368,3 +369,14 @@ class DeltaRuntimeTests(unittest.TestCase):
         self.assertNotIn(
             "customer_id", self.spark.table(db + ".vw_genie_sku_budget").columns
         )
+        plan = self.spark.table(
+            db + ".vw_genie_sku_monthly_plan_vs_actual"
+        ).where("sku_id='SKU-1001' AND fiscal_period='FY2026-P08'").collect()
+        self.assertEqual(len(plan), 1)
+        self.assertEqual(plan[0]["observation_count"], 5)
+        self.assertEqual(plan[0]["actual_quantity"], 635.0)
+        self.assertEqual(plan[0]["forecast_quantity"], 565.0)
+        self.assertEqual(plan[0]["budget_quantity"], 480.0)
+        self.assertEqual(plan[0]["forecast_vs_actual_quantity"], -70.0)
+        self.assertEqual(plan[0]["budget_vs_actual_quantity"], -155.0)
+        self.assertEqual(plan[0]["forecast_vs_budget_quantity"], 85.0)

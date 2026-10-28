@@ -19,6 +19,7 @@ END = date(2026, 9, 27)
 TABLE_KEYS = {
     "dim_sku": ("sku_id",),
     "dim_customer": ("customer_id",),
+    "dim_fiscal_period": ("country", "fiscal_period"),
     "fact_sku_forecast": (
         "region",
         "country",
@@ -134,6 +135,22 @@ def generate_commercial_data():
         ("CUST-003", "SKU-2001"): 1.00,
     }
     customer_by_id = {row["customer_id"]: row for row in customers}
+
+    fiscal_periods = []
+    for month in range(4, 10):
+        period_start = date(2026, month, 1)
+        period_end = date(2026, month + 1, 1) - timedelta(days=1)
+        fiscal_periods.append(
+            {
+                "country": "India",
+                "fiscal_period": f"FY2026-P{month:02d}",
+                "period_start": period_start.isoformat(),
+                "period_end": period_end.isoformat(),
+                "fiscal_year": 2026,
+                "period_number": month,
+                "dataset_version": COMMERCIAL_DATASET_VERSION,
+            }
+        )
 
     sku_forecast, customer_forecast = [], []
     for week in range(26):
@@ -251,6 +268,7 @@ def generate_commercial_data():
     return {
         "dim_sku": skus,
         "dim_customer": customers,
+        "dim_fiscal_period": fiscal_periods,
         "fact_sku_forecast": sku_forecast,
         "fact_customer_forecast": customer_forecast,
         "fact_sku_budget": budgets,
@@ -283,6 +301,10 @@ def validate_commercial_data(tables):
 
     sku_ids = {row["sku_id"] for row in tables["dim_sku"]}
     customer_ids = {row["customer_id"] for row in tables["dim_customer"]}
+    fiscal_periods = {
+        (row["country"], row["fiscal_period"])
+        for row in tables["dim_fiscal_period"]
+    }
     for name in (
         "fact_sku_forecast",
         "fact_customer_forecast",
@@ -305,6 +327,38 @@ def validate_commercial_data(tables):
         failures.append("fact_sku_budget:INVALID_CURRENCY")
     if any(row["currency"] != "INR" for row in tables["fact_sku_price"]):
         failures.append("fact_sku_price:INVALID_CURRENCY")
+    if any(
+        (row["country"], row["fiscal_period"]) not in fiscal_periods
+        for row in tables["fact_sku_budget"]
+    ):
+        failures.append("fact_sku_budget:UNKNOWN_FISCAL_PERIOD")
+    for country in {row["country"] for row in tables["dim_fiscal_period"]}:
+        ordered_periods = sorted(
+            (
+                row for row in tables["dim_fiscal_period"]
+                if row["country"] == country
+            ),
+            key=lambda row: row["period_start"],
+        )
+        if any(
+            current["period_start"] <= previous["period_end"]
+            for previous, current in zip(ordered_periods, ordered_periods[1:])
+        ):
+            failures.append("dim_fiscal_period:OVERLAPPING_PERIODS")
+            break
+    price_groups = {}
+    for row in tables["fact_sku_price"]:
+        group = (row["country"], row["sku_id"], row["price_type"])
+        price_groups.setdefault(group, []).append(row)
+    if any(
+        current["effective_from"] <= previous["effective_to"]
+        for rows in price_groups.values()
+        for previous, current in zip(
+            sorted(rows, key=lambda row: row["effective_from"]),
+            sorted(rows, key=lambda row: row["effective_from"])[1:],
+        )
+    ):
+        failures.append("fact_sku_price:OVERLAPPING_EFFECTIVE_DATES")
     return failures
 
 

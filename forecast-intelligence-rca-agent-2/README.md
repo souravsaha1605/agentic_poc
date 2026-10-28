@@ -141,7 +141,7 @@ separate platform charges, even with LLM disabled.
    Give Genie Code [the guarded operating runbook](docs/GENIE_CODE_RUNBOOK.md)
    before asking it to diagnose notebook or Space failures.
 4. To add the certified SKU/customer forecast, SKU budget, price and promotion
-   demo, run `04_commercial_genie_setup.py`. Add the six printed commercial
+   demo, run `04_commercial_genie_setup.py`. Add the nine printed commercial
    views to the existing Genie Agent, repaste the reviewed instructions, and
    validate with `genie/commercial_benchmark_questions.json`. These are
    synthetic pilot records, not real customers or budgets.

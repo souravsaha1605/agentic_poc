@@ -294,7 +294,7 @@ doubles.
 
 - Space name: `Forecast Intelligence and RCA`.
 - Add `workspace.forecast_rca_lab.vw_genie_forecast_observations`. When the
-  commercial demo is enabled, also add only the six views printed by
+  commercial demo is enabled, also add only the nine views printed by
   `04_commercial_genie_setup.py`; never add their raw fact tables.
 - Paste the complete `genie/SPACE_INSTRUCTIONS.md` into Space instructions.
 - Use the smallest approved Serverless SQL warehouse with auto-stop.

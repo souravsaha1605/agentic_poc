@@ -14,6 +14,9 @@ does not modify `workspace.forecast_db`, call Azure OpenAI, or change Teams.
 | SKU price | `vw_genie_sku_price` |
 | SKU promotion | `vw_genie_sku_promotion` |
 | Entity name/type lookup | `vw_genie_entity_lookup` |
+| Certified monthly SKU performance | `vw_genie_sku_monthly_performance` |
+| Certified customer-SKU monthly performance | `vw_genie_customer_sku_monthly_performance` |
+| Certified monthly plan versus actual | `vw_genie_sku_monthly_plan_vs_actual` |
 
 Customer budgets, customer prices and customer promotions are deliberately
 unsupported. All customer names contain `Demo`, and every row carries dataset
@@ -34,13 +37,17 @@ version `commercial-demo-1.0`.
 ## Publish in Databricks
 
 Pull the feature branch and run `04_commercial_genie_setup.py` using Serverless
-compute. A successful run prints `Commercial Genie demo is ready` and these six
+compute. A successful run prints `Commercial Genie demo is ready` and nine
 view names. Rerunning is idempotent; matching certified grains are preserved and
 conflicts block publication.
 
-In the existing Genie Agent, add only the six printed views. Do not add the raw
+In the existing Genie Agent, add only the nine printed views. Do not add the raw
 dimensions or facts. Replace the Agent instructions with the complete current
 `genie/SPACE_INSTRUCTIONS.md`.
+
+The setup certifies that dimension enrichment preserves fact row counts and
+that each monthly semantic view is unique at its documented grain. Forecast
+vintages are selected with `LATEST_PER_TARGET` before monthly aggregation.
 
 ## Controlled tests
 
@@ -80,6 +87,18 @@ Show the approved budget for SKU-1001 for FY2026-P08.
 ```
 
 Expected budget is 480 each and ₹29,760 under approved version `FY2026-V1`.
+
+Test the governed multi-source semantic mart:
+
+```text
+Compare actual, forecast and approved budget quantities for SKU-1001 in
+FY2026-P08. Show all signed variances and their denominators.
+```
+
+Expected actual is 635 each, forecast is 565 each and budget is 480 each. The
+signed variances are -70 forecast-versus-actual, -155 budget-versus-actual and
++85 forecast-versus-budget. The corresponding percentages are approximately
+-11.0236% of actual, -24.4094% of actual and +17.7083% of budget.
 
 ```text
 Show the price and approved promotion for SKU-1001 in August 2026.

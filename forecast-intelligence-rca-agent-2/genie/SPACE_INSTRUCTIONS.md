@@ -11,6 +11,31 @@ data.
 - `vw_genie_sku_budget`: approved SKU quantity and revenue budgets
 - `vw_genie_sku_price`: effective-dated SKU list prices
 - `vw_genie_sku_promotion`: SKU promotions only
+- `vw_genie_sku_monthly_performance`: certified latest-vintage SKU monthly metrics
+- `vw_genie_customer_sku_monthly_performance`: certified customer-SKU monthly metrics
+- `vw_genie_sku_monthly_plan_vs_actual`: certified SKU forecast, actual and budget comparison
+
+## Semantic contract
+
+- Use the prepared `vw_genie_*` views. Do not join the underlying `dim_*` or
+  `fact_*` tables.
+- Prefer a monthly semantic view whenever the question is monthly or compares
+  SKU forecast, actual and budget. Its joins, vintage selection, aggregation
+  grain and percentage denominators are certified in the view.
+- Never use `SELECT DISTINCT` to repair duplicate rows. If a configured view has
+  more than one row at its documented grain, return `BLOCKED` and report a data
+  certification problem.
+- Do not join row-level forecast records directly to budget, price or promotion
+  records. If no certified view supports a requested cross-domain analysis,
+  explain that it is unsupported instead of inventing a join.
+- Monthly SKU performance has one row per region, country, SKU, fiscal period,
+  unit and dataset version. Monthly customer performance adds customer to that
+  grain. Plan-versus-actual adds one approved budget version.
+- `LATEST_PER_TARGET` means the most recently generated forecast is selected
+  independently for every target date before monthly aggregation.
+- Quantity is additive only across compatible units. Inventory balances and
+  prices are non-additive across dates. Percentages must be recomputed from
+  certified totals rather than averaged.
 
 ## Scope and grain
 

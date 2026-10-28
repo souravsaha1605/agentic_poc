@@ -54,6 +54,27 @@
       }
     },
     {
+      "id": "sku_monthly_plan_vs_actual",
+      "question": "Compare actual, forecast and approved budget quantities for SKU-1001 in FY2026-P08. Show all signed variances and their denominators.",
+      "expected": {
+        "forecast_vintage_policy": "LATEST_PER_TARGET",
+        "observations": 5,
+        "first_observation_date": "2026-08-02",
+        "last_observation_date": "2026-08-30",
+        "actual_quantity": 635.0,
+        "forecast_quantity": 565.0,
+        "budget_quantity": 480.0,
+        "forecast_vs_actual_quantity": -70.0,
+        "budget_vs_actual_quantity": -155.0,
+        "forecast_vs_budget_quantity": 85.0,
+        "forecast_vs_actual_pct": -11.0236,
+        "budget_vs_actual_pct": -24.4094,
+        "forecast_vs_budget_pct": 17.7083,
+        "unit_of_measure": "each",
+        "budget_version": "FY2026-V1"
+      }
+    },
+    {
       "id": "customer_budget_rejected",
       "question": "Show the budget for Metro Retail Demo.",
       "expected_behavior": "Reject customer budget as unsupported and ask for an SKU."
