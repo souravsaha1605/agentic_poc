@@ -52,6 +52,56 @@ class ConversationService:
             ),
             None,
         )
+        store = re.search(r"\b(?:S\d{3}|STORE\d+)\b", message, re.I)
+        # Category aggregation is explicit and limited to one region. The trusted
+        # principal must have a wildcard product grant; row scopes are checked
+        # again after retrieval by BusinessService.
+        if (
+            not ids
+            and category
+            and region
+            and re.search(r"\bcategory\b", message, re.I)
+        ):
+            if "*" not in principal.products:
+                return (
+                    None,
+                    "Category aggregation is unavailable in your approved product scope.",
+                )
+            matches = [
+                row
+                for row in catalog
+                if row["category"] == category and row["region"] == region
+            ]
+            if not matches:
+                return None, "No approved products match that category and region."
+            return {
+                "product_id": "*",
+                "product_name": category + " category",
+                "region": region,
+                "category": category,
+                "store_id": store.group().upper() if store else None,
+            }, None
+        if (
+            not ids
+            and active
+            and active["entity"].get("product_id") == "*"
+            and "another product" not in message.lower()
+        ):
+            entity = copy.deepcopy(active["entity"])
+            requested_region = region or entity["region"]
+            requested_category = category or entity["category"]
+            matches = [
+                row
+                for row in catalog
+                if row["region"] == requested_region
+                and row["category"] == requested_category
+            ]
+            if not matches:
+                return None, "No approved products match that aggregate scope."
+            entity.update(region=requested_region, category=requested_category)
+            if store:
+                entity["store_id"] = store.group().upper()
+            return entity, None
         if len(ids) > 1:
             return (
                 None,
@@ -110,7 +160,6 @@ class ConversationService:
                 + (f": {choices}." if choices else ".")
             )
         entity = copy.deepcopy(next(iter(unique.values())))
-        store = re.search(r"\b(?:S\d{3}|STORE\d+)\b", message, re.I)
         if store:
             entity["store_id"] = store.group().upper()
         elif (
@@ -308,7 +357,14 @@ class ConversationService:
             )
             dates = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", request.message)
             if "as of" in request.message.lower() and dates:
-                params.update(as_of=dates[0], start=None, end=None)
+                params.update(
+                    as_of=dates[0],
+                    start=None,
+                    end=None,
+                    fiscal_period=None,
+                    lookback_months=None,
+                    relative_period=None,
+                )
             elif "vintage" in request.message.lower() and dates:
                 params["vintage"] = dates[-1]
             elif len(dates) == 4:
@@ -317,22 +373,85 @@ class ConversationService:
                     end=dates[1],
                     comparison_start=dates[2],
                     comparison_end=dates[3],
+                    compare_previous_period=False,
+                    lookback_months=None,
+                    relative_period=None,
                     as_of=None,
                     fiscal_period=None,
                 )
             elif len(dates) == 2:
-                params.update(start=dates[0], end=dates[1], as_of=None)
+                params.update(
+                    start=dates[0],
+                    end=dates[1],
+                    lookback_months=None,
+                    relative_period=None,
+                    comparison_start=None,
+                    comparison_end=None,
+                    as_of=None,
+                    fiscal_period=None,
+                )
             elif dates:
                 clarification = 'Specify both ISO start and end dates, or use "as of YYYY-MM-DD" for inventory.'
             weeks = re.search(r"last\s+(\d+)\s+weeks?", request.message, re.I)
             if weeks:
                 params.update(
-                    lookback_weeks=int(weeks[1]), start=None, end=None, as_of=None
+                    lookback_weeks=int(weeks[1]),
+                    lookback_months=None,
+                    relative_period=None,
+                    comparison_start=None,
+                    comparison_end=None,
+                    start=None,
+                    end=None,
+                    as_of=None,
+                    fiscal_period=None,
                 )
+            months = re.search(r"last\s+(\d+)\s+months?", request.message, re.I)
+            if months:
+                params.update(
+                    lookback_months=int(months[1]),
+                    relative_period=None,
+                    comparison_start=None,
+                    comparison_end=None,
+                    start=None,
+                    end=None,
+                    as_of=None,
+                    fiscal_period=None,
+                )
+            elif re.search(r"\b(?:last|previous) month\b", request.message, re.I):
+                params.update(
+                    lookback_months=None,
+                    relative_period="previous_month",
+                    comparison_start=None,
+                    comparison_end=None,
+                    start=None,
+                    end=None,
+                    as_of=None,
+                    fiscal_period=None,
+                )
+            elif re.search(r"\bthis month\b", request.message, re.I):
+                params.update(
+                    lookback_months=None,
+                    relative_period="this_month",
+                    comparison_start=None,
+                    comparison_end=None,
+                    start=None,
+                    end=None,
+                    as_of=None,
+                    fiscal_period=None,
+                )
+            params["compare_previous_period"] = bool(
+                re.search(
+                    r"previous period|period.over.period|month.over.month",
+                    request.message,
+                    re.I,
+                )
+            )
             fiscal = re.search(r"\bFY\d{4}-P(?:0[1-9]|1[0-2])\b", request.message, re.I)
             if fiscal:
                 params.update(
                     fiscal_period=fiscal.group().upper(),
+                    lookback_months=None,
+                    relative_period=None,
                     start=None,
                     end=None,
                     as_of=None,
@@ -380,6 +499,8 @@ class ConversationService:
             params["include_trend"] = bool(
                 re.search(r"trend|change|comparison", request.message, re.I)
             )
+            if entity["product_id"] == "*" and tool == "run_forecast_rca":
+                clarification = "RCA requires one resolved product. Use category aggregation for forecast, revenue, inventory or historical patterns."
             if not clarification:
                 plan = AnalysisPlan.model_validate(params)
                 try:

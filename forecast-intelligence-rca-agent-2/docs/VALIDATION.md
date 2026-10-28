@@ -1,6 +1,26 @@
 # Validation performed
 
-Executed on 27 October 2026 with Python 3.12.14 and OpenJDK 21.
+## Latest verified local results
+
+The following results were produced during the final test-hardening pass after
+the Increment 1 and Increment 2 correctness changes.
+
+| Check | Latest verified result |
+| --- | --- |
+| Default offline suite | 95 discovered; 90 passed; 5 optional Spark/Delta tests skipped |
+| Separately enabled local Spark 4.2.0 / Delta 4.4.1 suite | 5 passed in 79.925 seconds |
+| Focused hardening tests | 3 passed: aggregate follow-ups, partial inventory exposure and calendar-boundary comparison |
+| Focused Python lint and syntax checks | Passed |
+| `git diff --check` | Passed |
+| Persistent application paid-call ledger | `used = 2`; SQLite integrity check `ok` |
+
+No hosted Databricks validation is represented by these local results.
+
+## Historical validation record
+
+The results below were recorded earlier on 27 October 2026 with Python 3.12.14
+and OpenJDK 21. They are retained as historical evidence and are not the current
+suite counts.
 
 | Check | Observed result |
 | --- | --- |

@@ -41,10 +41,14 @@ class RecordsProvider:
         selected = [
             r
             for r in self.rows
-            if r["product_id"] == plan.product_id
+            if (plan.product_id == "*" or r["product_id"] == plan.product_id)
             and r["region"] == plan.region
             and (not plan.store_id or r["store_id"] == plan.store_id)
-            and (not plan.category or r["category"] == plan.category)
+            and (
+                not plan.category
+                or plan.category == "*"
+                or r["category"] == plan.category
+            )
             and (not plan.channel or r.get("channel") == plan.channel)
             and (not plan.fiscal_period or r.get("fiscal_period") == plan.fiscal_period)
         ]
@@ -153,15 +157,18 @@ class GovernedProvider:
         # Read only approved columns, always scope in SQL before collecting.
         # Period filtering is done here as well as in the analytical layer.
         self.check_source_version()
-        clauses = ["product_id=:product", "region=:region"]
-        args = {"product": plan.product_id, "region": plan.region}
+        clauses = ["region=:region"]
+        args = {"region": plan.region}
+        if plan.product_id != "*":
+            clauses.append("product_id=:product")
+            args["product"] = plan.product_id
         for column, value in [
             ("store_id", plan.store_id),
             ("category", plan.category),
             ("channel", plan.channel),
             ("fiscal_period", plan.fiscal_period),
         ]:
-            if value:
+            if value and value != "*":
                 clauses.append(f"{column}=:{column}")
                 args[column] = value
         if plan.tool == "get_inventory_context" and (plan.as_of or plan.end):
@@ -177,7 +184,7 @@ class GovernedProvider:
             f"""SELECT product_id, region, category, store_id, date,
             units_sold, demand_forecast, inventory_level, price, discount,
             holiday_promotion, competitor_pricing, weather_condition, seasonality,
-            forecast_generated_date, forecast_horizon_days, currency, discount_unit,
+            forecast_generated_date, forecast_horizon_days, currency, unit_of_measure, discount_unit,
             inventory_timestamp, launch_date, lifecycle_stage, channel, fiscal_period,
             fiscal_calendar_policy, weather_observed_at FROM {self.source}
             WHERE {" AND ".join(clauses)} ORDER BY date LIMIT {MAX_SOURCE_ROWS + 1}""",

@@ -150,6 +150,10 @@
               "value": "deterministic"
             },
             {
+              "name": "FACTS_BACKEND",
+              "value": "sql"
+            },
+            {
               "name": "STATE_BACKEND",
               "value": "azure"
             },
@@ -255,6 +259,7 @@
       "type": "Microsoft.BotService/botServices/channels",
       "apiVersion": "2022-09-15",
       "name": "[concat(parameters('appName'), '-bot/MsTeamsChannel')]",
+      "location": "global",
       "dependsOn": [
         "[resourceId('Microsoft.BotService/botServices', concat(parameters('appName'), '-bot'))]"
       ],

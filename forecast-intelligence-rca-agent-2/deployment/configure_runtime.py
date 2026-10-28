@@ -35,6 +35,7 @@ def configure(args):
         "DATABRICKS_HTTP_PATH": args.warehouse_path,
         "DATABRICKS_AZURE_RESOURCE_ID": args.databricks_resource_id,
         "FORECAST_DATABASE": args.database,
+        "FACTS_BACKEND": "sql",
         "TEAMS_ENABLED": "false",
         "ENABLE_LLM": "false",
         "GENIE_MODE": "off",
