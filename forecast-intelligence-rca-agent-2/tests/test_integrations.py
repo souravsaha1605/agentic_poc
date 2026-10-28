@@ -260,6 +260,25 @@ class ChannelTests(unittest.IsolatedAsyncioTestCase):
             finally:
                 await client.close()
 
+    async def test_explicit_lab_backend_preserves_azure_state(self):
+        from channels.host import create_facts_core
+
+        with (
+            patch.dict(os.environ, {"FACTS_BACKEND": "lab"}),
+            patch("runtime.create_core", return_value="lab-core") as create_core,
+        ):
+            core, connection = create_facts_core()
+        self.assertEqual(core, "lab-core")
+        self.assertIsNone(connection)
+        create_core.assert_called_once_with("lab", "azure")
+
+    async def test_unknown_facts_backend_is_rejected(self):
+        from channels.host import create_facts_core
+
+        with patch.dict(os.environ, {"FACTS_BACKEND": "unknown"}):
+            with self.assertRaisesRegex(ValueError, "sql.*lab"):
+                create_facts_core()
+
     async def test_missing_and_malformed_jwt_rejected_without_backend(self):
         from aiohttp.test_utils import TestClient, TestServer
         from channels.teams import create_app

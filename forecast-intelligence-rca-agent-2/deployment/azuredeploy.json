@@ -150,6 +150,10 @@
               "value": "deterministic"
             },
             {
+              "name": "FACTS_BACKEND",
+              "value": "sql"
+            },
+            {
               "name": "STATE_BACKEND",
               "value": "azure"
             },

@@ -784,6 +784,7 @@ class DeploymentArtifactTests(unittest.TestCase):
         }
         self.assertEqual(settings["ENABLE_LLM"], "false")
         self.assertEqual(settings["TEAMS_ENABLED"], "false")
+        self.assertEqual(settings["FACTS_BACKEND"], "sql")
         teams_channel = next(
             resource
             for resource in template["resources"]

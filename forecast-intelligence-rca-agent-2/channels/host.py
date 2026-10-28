@@ -31,6 +31,34 @@ def add_policy_routes(app):
     return app
 
 
+def create_facts_core():
+    """Compose the selected facts backend while keeping Azure-owned state.
+
+    ``sql`` remains the production default. ``lab`` is an explicit interview or
+    development mode that uses the versioned BRD fixtures; it is never selected
+    automatically when Databricks configuration is missing.
+    """
+    from runtime import create_core
+
+    backend = os.getenv("FACTS_BACKEND", "sql").lower()
+    if backend == "lab":
+        return create_core("lab", "azure"), None
+    if backend != "sql":
+        raise ValueError("FACTS_BACKEND must be 'sql' or 'lab'.")
+
+    from databricks import sql
+    from databricks.sdk.core import Config
+
+    config = Config()  # Supported unified authentication; no embedded PAT.
+    connection = sql.connect(
+        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
+        http_path=os.environ["DATABRICKS_HTTP_PATH"],
+        credentials_provider=lambda: config.authenticate,
+        socket_timeout=30,
+    )
+    return create_core("sql", "azure", sql_connection=connection), connection
+
+
 def build_app():
     if not enabled():
         app = web.Application()
@@ -55,9 +83,6 @@ def build_app():
     )
     from microsoft_agents.hosting.aiohttp import CloudAdapter
     from microsoft_agents.authentication.msal import MsalConnectionManager
-    from databricks import sql
-    from databricks.sdk.core import Config
-    from runtime import create_core
 
     bot_id = os.environ["BOT_CLIENT_ID"]
     auth = AgentAuthConfiguration(
@@ -86,14 +111,7 @@ def build_app():
         credential=credential,
     )
     identities = IdentityMap(os.environ["IDENTITY_MAP_FILE"])
-    config = Config()  # Supported Databricks unified authentication; no embedded PAT.
-    connection = sql.connect(
-        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
-        http_path=os.environ["DATABRICKS_HTTP_PATH"],
-        credentials_provider=lambda: config.authenticate,
-        socket_timeout=30,
-    )
-    core = create_core("sql", "azure", sql_connection=connection)
+    core, connection = create_facts_core()
 
     async def deliver(reference, text):
         saved = ConversationReference.model_validate(reference)
@@ -130,7 +148,8 @@ def build_app():
             await task
         except asyncio.CancelledError:
             pass
-        connection.close()
+        if connection is not None:
+            connection.close()
         queue.close()
         poison.close()
         credential.close()
