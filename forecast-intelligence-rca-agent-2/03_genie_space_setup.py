@@ -1,10 +1,18 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 """Publish and validate the single table exposed to the Forecast RCA Genie Space.
 
 Run this notebook only after ``01_data_initialization.ipynb`` succeeds. It does
 not invoke Genie, an LLM, or any paid model API. The only write is a replaceable
 view in the isolated lab schema.
 """
+
+# COMMAND ----------
+
+!pip install openai
 
 # COMMAND ----------
 
@@ -90,4 +98,3 @@ print("Certified source version:", current.source_version)
 print("Delta version:", current.delta_version)
 print("Rows:", row_count)
 print("Next: create a Genie Space and paste genie/SPACE_INSTRUCTIONS.md into its instructions.")
-
