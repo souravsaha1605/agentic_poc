@@ -39,7 +39,12 @@ def run(arguments, capture=False):
             + arguments[1]
             + ". Inspect Azure activity/deployment logs securely."
         )
-    return json.loads(result.stdout) if capture else None
+    if not capture:
+        return None
+    # Some Azure CLI versions render a successful what-if without returning a
+    # JSON document on stdout. Treat that as a successful empty result instead
+    # of hiding the real outcome behind JSONDecodeError.
+    return json.loads(result.stdout) if result.stdout.strip() else {}
 
 
 def deploy(args):

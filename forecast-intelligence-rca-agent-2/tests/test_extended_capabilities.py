@@ -784,6 +784,12 @@ class DeploymentArtifactTests(unittest.TestCase):
         }
         self.assertEqual(settings["ENABLE_LLM"], "false")
         self.assertEqual(settings["TEAMS_ENABLED"], "false")
+        teams_channel = next(
+            resource
+            for resource in template["resources"]
+            if resource["type"] == "Microsoft.BotService/botServices/channels"
+        )
+        self.assertEqual(teams_channel["location"], "global")
         self.assertEqual(settings["MAX_PAID_CALLS"], "70")
         self.assertFalse(
             any(
