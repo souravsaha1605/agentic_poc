@@ -235,6 +235,9 @@ class DeltaRuntimeTests(unittest.TestCase):
 
         report = initialize(self.spark, db)
         self.assertEqual(report["generated_rows"], 0)
+        self.assertTrue(
+            self.spark.catalog.tableExists(db + ".vw_genie_forecast_observations")
+        )
         grain = ",".join(FIXTURE_GRAIN)
         duplicates = self.spark.sql(
             f"SELECT {grain}, COUNT(*) count FROM {db}.fact_sales_forecast "

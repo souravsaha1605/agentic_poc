@@ -133,13 +133,20 @@ separate platform charges, even with LLM disabled.
 1. Run `01_data_initialization.ipynb` on an approved Delta-enabled Runtime.
    The default is the dedicated `workspace.forecast_rca_lab` schema.
 2. Run `02_golden_rca_tests.ipynb`. It runs assertions and displays actual readiness.
-3. Supply a verified identity map, then use `LLM Test Notebook.ipynb` as the
+3. For a direct Genie pilot, run `03_genie_space_setup.py` as a Databricks
+   notebook. Add only `vw_genie_forecast_observations` to the Space, paste
+   [the reviewed instructions](genie/SPACE_INSTRUCTIONS.md) into its instructions,
+   and validate with [the benchmark questions](genie/benchmark_questions.json).
+   This setup makes no model API calls itself.
+4. Supply a verified identity map, then use `LLM Test Notebook.ipynb` as the
    shared notebook harness. It also defaults to zero paid calls.
 
 Initialization preserves existing fact data. Incompatible source schema blocks
 publication and requires an explicit lab migration. Deliberate golden fixtures
 live separately. The job validates their expected signals, audits the actual
-source, creates the five governed views, and publishes a source manifest last.
+source, creates five application views plus the single-grain Genie semantic
+view, and publishes a source manifest last. Direct Genie and Teams coexist;
+neither replaces the other's delivery path.
 Reruns do not duplicate fixture data, state, readiness keys or spent calls.
 `deployment/databricks.yml` defines one manually triggered readiness job; add
 its schedule only after confirming source cadence and budget.

@@ -377,6 +377,11 @@ def initialize(spark, database="workspace.forecast_rca_lab", _after_source_write
         "vw_forecast_rca_features",
     ):
         spark.sql(f"CREATE OR REPLACE VIEW {database}.{view} AS {base}")
+    # Direct Genie is a parallel interface. It receives one explicit-grain view
+    # while the Teams application retains all existing governed view contracts.
+    from genie_semantic import publish_genie_view
+
+    publish_genie_view(spark, database)
     # Empty alias table means no approved aliases. In particular P001 != P0001.
     spark.sql(f"""CREATE TABLE IF NOT EXISTS {database}.dim_entity_alias
         (entity_id STRING, alias_value STRING, entity_type STRING, match_type STRING) USING DELTA""")

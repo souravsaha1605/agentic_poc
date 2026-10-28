@@ -1,0 +1,66 @@
+{
+  "dataset": "brd-lab-5.2",
+  "authoritative_oracle": "offline deterministic service",
+  "questions": [
+    {
+      "id": "forecast_retrieval",
+      "question": "Show forecast accuracy for P0099 in West for the last six completed months.",
+      "must_include": ["P0099", "West", "actual", "forecast", "wmape", "accuracy", "date range"],
+      "expected": {
+        "period_start": "2026-04-01",
+        "period_end": "2026-09-30",
+        "observations": 26,
+        "actual": 2600.0,
+        "forecast": 2080.0,
+        "wmape_pct": 20.0,
+        "accuracy_pct": 80.0,
+        "bias_pct": -20.0
+      }
+    },
+    {
+      "id": "revenue_comparison",
+      "question": "Compare gross and net revenue for P0070 in North between the previous two completed months.",
+      "must_include": ["P0070", "North", "gross revenue", "net revenue", "primary period", "comparison period"],
+      "expected": {
+        "primary_period": ["2026-09-01", "2026-09-30"],
+        "comparison_period": ["2026-08-01", "2026-08-31"],
+        "primary_gross_revenue_inr": 2000.0,
+        "primary_net_revenue_inr": 1900.0,
+        "comparison_gross_revenue_inr": 4000.0,
+        "comparison_net_revenue_inr": 3800.0,
+        "gross_revenue_delta_inr": -2000.0,
+        "net_revenue_delta_inr": -1900.0
+      }
+    },
+    {
+      "id": "inventory_balance",
+      "question": "What is the latest inventory balance by store for P0020 in North?",
+      "must_include": ["P0020", "North", "store", "as-of", "availability"],
+      "expected": {
+        "as_of": "2026-09-27",
+        "store_id": "S001",
+        "inventory_balance_each": 0.0
+      }
+    },
+    {
+      "id": "rolling_gap_policy",
+      "question": "Show the four-week rolling actual and forecast trend for P0040 in North.",
+      "must_include": ["P0040", "North", "four consecutive", "actual", "forecast"]
+    },
+    {
+      "id": "category_scope",
+      "question": "Compare forecast accuracy for Dairy products in North and list every included product.",
+      "must_include": ["Dairy", "North", "included product", "unit of measure", "wmape"]
+    },
+    {
+      "id": "stockout_distortion",
+      "question": "Did stockouts distort forecast accuracy for P0020 in North?",
+      "must_include": ["P0020", "stockout", "observation", "association", "not causal"]
+    },
+    {
+      "id": "insufficient_history",
+      "question": "Run seasonal RCA for P0081 in North.",
+      "must_include": ["P0081", "insufficient history", "not testable"]
+    }
+  ]
+}

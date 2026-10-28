@@ -82,7 +82,19 @@ A controlled opt-in test may rank existing evidence. Inspect the shared ledger
 before and after it. SDK retries are disabled. A failed HTTP attempt consumes one
 reservation. The code does not silently retry, increase prompts or switch models.
 
-## 4. Optional Genie validation
+## 4. Direct Genie pilot and optional application validation
+
+Direct business-user Genie access is independent of the Teams application and
+the application-side adapter below. Run `01_data_initialization.ipynb`, then
+`03_genie_space_setup.py`, and configure a Genie Space with only
+`workspace.forecast_rca_lab.vw_genie_forecast_observations`. Use the reviewed
+instructions in `genie/SPACE_INSTRUCTIONS.md`. This does not change
+`TEAMS_ENABLED`, the bot route, queues, state, or the future Teams-to-Databricks
+SQL path.
+
+The following adapter is only for comparing Genie output inside the custom
+application. It remains disabled until its separate authentication and paid-call
+controls are approved.
 
 Keep `GENIE_MODE=off` unless the policy owner explicitly approves generated-query
 execution in a **synthetic-only** Genie space and warehouse. Grant no enterprise
