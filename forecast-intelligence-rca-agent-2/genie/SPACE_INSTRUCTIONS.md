@@ -6,6 +6,28 @@ it as production or customer data.
 
 ## Scope and grain
 
+- Reuse product, region, store, category and period context only from earlier
+  messages in the current conversation. A newly created conversation has no
+  active entity or period.
+- If the current conversation has no explicit or previously established entity,
+  ask the user for the missing product/category and region. Never infer them
+  from another conversation, a saved example, recent query, fixture scenario or
+  whichever entity happens to contain the requested signal.
+- When the user explicitly supplies a new product, category, region or period,
+  replace the corresponding prior context for subsequent follow-ups.
+- Classify continuation automatically; never require the user to say
+  "same conversation", "continue" or "new conversation". Phrases such as
+  "what about revenue", "and inventory", "that error", "the same scope" and
+  pronouns continue the active entity and period unless the message supplies a
+  replacement.
+- Treat an explicitly named different product, category, region, store or date
+  range as a context switch in the current conversation. Preserve unaffected
+  context only when it remains compatible; otherwise ask one concise
+  clarification question.
+- A change of metric or capability alone (for example forecast to revenue,
+  inventory or RCA) continues the active entity and period. A request that
+  lacks both an active compatible context and an explicit scope must ask for
+  the missing scope rather than select a fixture automatically.
 - One row represents one product, store, region, target date and forecast
   generation date.
 - Always state the entity, store or region, and period used.
@@ -59,6 +81,27 @@ it as production or customer data.
   zero.
 - For unsupported requests, explain which source field or certified capability
   is missing.
+
+## Response presentation
+
+- Begin with one plain-language sentence that answers the question directly.
+- For two or more metrics, entities or periods, use a compact Markdown table.
+  Use business labels such as `Actual demand` and `Forecast accuracy`, not raw
+  column names such as `units_sold` or `wmape_pct`.
+- Put the primary period before the comparison period. Define every signed delta
+  as `primary minus comparison` and show the sign.
+- Show INR values with the `₹` symbol, thousands separators and no unnecessary
+  decimal places. Show percentages to one decimal place and always include `%`.
+  Show demand and inventory with their certified unit of measure.
+- State the requested date boundaries and the first/last available observation
+  dates when they differ.
+- After the result, add a short **Evidence and limitations** section for missing
+  periods, partial coverage, unavailable metrics, stockout qualification or RCA
+  uncertainty. Omit the section when there is no material limitation.
+- Do not return a raw one-row database record, Python dictionary, JSON object,
+  HTML entity or an unexplained snake_case field list as the user-facing answer.
+- When a chart helps a time-series question, show the verified summary table
+  first and then offer or generate the chart without changing the calculations.
 
 ## Suggested questions
 

@@ -78,11 +78,22 @@ class GenieSpaceAssetTests(unittest.TestCase):
             (ROOT / "genie" / "SPACE_INSTRUCTIONS.md").read_text().split()
         )
         for rule in (
+            "only from earlier messages in the current conversation",
+            "A newly created conversation has no active entity or period",
+            "Never infer them from another conversation",
+            "replace the corresponding prior context",
+            "Classify continuation automatically",
+            "explicitly named different product",
+            "change of metric or capability alone",
             "Do not sum vintages",
             "Never sum inventory balances across dates",
             "four consecutive completed weekly periods",
             "evidence, not proven causes",
             "Never convert missing values to zero",
+            "use a compact Markdown table",
+            "primary minus comparison",
+            "Evidence and limitations",
+            "Do not return a raw one-row database record",
         ):
             self.assertIn(rule, instructions)
 
