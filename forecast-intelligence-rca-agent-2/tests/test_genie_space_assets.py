@@ -83,6 +83,10 @@ class GenieSpaceAssetTests(unittest.TestCase):
             "four consecutive completed weekly periods",
             "evidence, not proven causes",
             "Never convert missing values to zero",
+            "use a compact Markdown table",
+            "primary minus comparison",
+            "Evidence and limitations",
+            "Do not return a raw one-row database record",
         ):
             self.assertIn(rule, instructions)
 

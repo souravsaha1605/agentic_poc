@@ -10,12 +10,6 @@ not invoke Genie, an LLM, or any paid model API. The only write is a replaceable
 view in the isolated lab schema.
 """
 
-# COMMAND ----------
-
-!pip install openai
-
-# COMMAND ----------
-
 import os
 from genie_semantic import publish_genie_view
 from state import checked_table

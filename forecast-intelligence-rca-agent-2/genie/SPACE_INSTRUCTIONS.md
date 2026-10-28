@@ -60,6 +60,27 @@ it as production or customer data.
 - For unsupported requests, explain which source field or certified capability
   is missing.
 
+## Response presentation
+
+- Begin with one plain-language sentence that answers the question directly.
+- For two or more metrics, entities or periods, use a compact Markdown table.
+  Use business labels such as `Actual demand` and `Forecast accuracy`, not raw
+  column names such as `units_sold` or `wmape_pct`.
+- Put the primary period before the comparison period. Define every signed delta
+  as `primary minus comparison` and show the sign.
+- Show INR values with the `₹` symbol, thousands separators and no unnecessary
+  decimal places. Show percentages to one decimal place and always include `%`.
+  Show demand and inventory with their certified unit of measure.
+- State the requested date boundaries and the first/last available observation
+  dates when they differ.
+- After the result, add a short **Evidence and limitations** section for missing
+  periods, partial coverage, unavailable metrics, stockout qualification or RCA
+  uncertainty. Omit the section when there is no material limitation.
+- Do not return a raw one-row database record, Python dictionary, JSON object,
+  HTML entity or an unexplained snake_case field list as the user-facing answer.
+- When a chart helps a time-series question, show the verified summary table
+  first and then offer or generate the chart without changing the calculations.
+
 ## Suggested questions
 
 1. Show actual demand, forecast demand, WMAPE, accuracy and bias for P0099 in
