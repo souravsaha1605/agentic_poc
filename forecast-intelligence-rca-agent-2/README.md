@@ -140,7 +140,14 @@ separate platform charges, even with LLM disabled.
    This setup makes no model API calls itself.
    Give Genie Code [the guarded operating runbook](docs/GENIE_CODE_RUNBOOK.md)
    before asking it to diagnose notebook or Space failures.
-4. Supply a verified identity map, then use `LLM Test Notebook.ipynb` as the
+4. To add the certified SKU/customer forecast, SKU budget, price and promotion
+   demo, run `04_commercial_genie_setup.py`. Add the six printed commercial
+   views to the existing Genie Agent, repaste the reviewed instructions, and
+   validate with `genie/commercial_benchmark_questions.json`. These are
+   synthetic pilot records, not real customers or budgets.
+   Follow [the commercial demo guide](docs/COMMERCIAL_GENIE_DEMO.md) for the
+   exact Agent sources, expected results and production boundary.
+5. Supply a verified identity map, then use `LLM Test Notebook.ipynb` as the
    shared notebook harness. It also defaults to zero paid calls.
 
 Initialization preserves existing fact data. Incompatible source schema blocks

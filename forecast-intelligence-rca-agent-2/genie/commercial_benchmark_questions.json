@@ -1,0 +1,72 @@
+{
+  "dataset": "commercial-demo-1.0",
+  "authoritative_oracle": "offline deterministic commercial fixture generator",
+  "questions": [
+    {
+      "id": "sku_forecast",
+      "question": "Show forecast performance for SKU-1001 in North, India from 2026-04-05 through 2026-09-27.",
+      "expected": {
+        "observations": 26,
+        "actual_quantity": 3305.0,
+        "forecast_quantity": 2935.0,
+        "wmape_pct": 11.1952,
+        "accuracy_pct": 88.8048,
+        "bias_pct": -11.1952,
+        "unit_of_measure": "each"
+      }
+    },
+    {
+      "id": "customer_sku_forecast",
+      "question": "Show the SKU-1001 forecast for Metro Retail Demo in North, India from 2026-04-05 through 2026-09-27.",
+      "expected": {
+        "customer_id": "CUST-001",
+        "sku_id": "SKU-1001",
+        "observations": 26,
+        "actual_quantity": 1983.0,
+        "forecast_quantity": 1766.0,
+        "wmape_pct": 10.943,
+        "accuracy_pct": 89.057,
+        "bias_pct": -10.943
+      }
+    },
+    {
+      "id": "customer_forecast_all_skus",
+      "question": "Summarize the forecast for Metro Retail Demo across its SKUs from 2026-04-05 through 2026-09-27 and list included SKUs.",
+      "expected": {
+        "customer_id": "CUST-001",
+        "included_skus": ["SKU-1001", "SKU-1002"],
+        "observations": 52,
+        "actual_quantity": 3115.0,
+        "forecast_quantity": 2900.0,
+        "wmape_pct": 9.2135,
+        "accuracy_pct": 90.7865,
+        "bias_pct": -6.9021
+      }
+    },
+    {
+      "id": "sku_budget",
+      "question": "Show the approved budget for SKU-1001 for FY2026-P08.",
+      "expected": {
+        "budget_version": "FY2026-V1",
+        "budget_quantity": 480.0,
+        "budget_revenue_inr": 29760.0,
+        "status": "APPROVED"
+      }
+    },
+    {
+      "id": "customer_budget_rejected",
+      "question": "Show the budget for Metro Retail Demo.",
+      "expected_behavior": "Reject customer budget as unsupported and ask for an SKU."
+    },
+    {
+      "id": "sku_price_and_promotion",
+      "question": "Show the price and approved promotion for SKU-1001 in August 2026.",
+      "expected": {
+        "price_type": "LIST",
+        "price_inr": 62.0,
+        "promotion_id": "PROMO-1001-AUG",
+        "discount_value_pct": 10.0
+      }
+    }
+  ]
+}

@@ -76,7 +76,9 @@ copy lab fixtures into `workspace.forecast_db`.
 | `rca_source_manifest` | Published source and Delta version | Publish last, after successful certification |
 | `rca_paid_call_ledger` | Durable paid-call reservations | Preserve; never reset or delete |
 | `vw_forecast_metrics` | Governed application source | Replaceable view after certification |
-| `vw_genie_forecast_observations` | Only source added to the Genie Space | Replaceable single-grain view |
+| `vw_genie_forecast_observations` | Original product/store Genie source | Replaceable single-grain view |
+| Commercial demo dimensions/facts | Separate SKU, customer, forecast, budget, price and promotion grains | Append missing certified demo grains only |
+| `rca_commercial_manifest` | Certified commercial demo version and counts | Append one record per source version |
 
 Fixture grain:
 
@@ -95,8 +97,10 @@ Run from the pulled Databricks Git folder in this order:
 1. `01_data_initialization.ipynb`
 2. `02_golden_rca_tests.ipynb`
 3. `03_genie_space_setup.py` as a Databricks source-format notebook
+4. `04_commercial_genie_setup.py` when the separate SKU/customer/budget demo is
+   in scope
 
-Do not create the Genie Space until all three steps pass.
+Do not create or extend the Genie Space until the applicable steps pass.
 
 Initialization is designed to recover from an interruption and to be
 idempotent. A rerun must preserve existing matching rows, table grain, source
@@ -226,7 +230,8 @@ project module.
 ### Genie answer differs from benchmark
 
 - Inspect generated SQL and selected date boundaries.
-- Confirm the Space uses only `vw_genie_forecast_observations`.
+- Confirm the Space uses only the certified views documented in
+  `genie/SPACE_INSTRUCTIONS.md`, never the underlying raw facts.
 - Confirm one vintage per target grain and correct units/currency.
 - Compare with `genie/benchmark_questions.json` and deterministic service output.
 - Improve Space instructions or the semantic view only when the deterministic
@@ -275,8 +280,9 @@ Run from `forecast-intelligence-rca-agent-2`:
 
 ```bash
 python -m unittest discover -s tests
-python -m py_compile 03_genie_space_setup.py genie_semantic.py
+python -m py_compile 03_genie_space_setup.py 04_commercial_genie_setup.py genie_semantic.py commercial_lab.py
 python -m json.tool genie/benchmark_questions.json
+python -m json.tool genie/commercial_benchmark_questions.json
 git diff --check
 ```
 
@@ -287,12 +293,15 @@ doubles.
 ## Genie Space configuration
 
 - Space name: `Forecast Intelligence and RCA`.
-- Add only `workspace.forecast_rca_lab.vw_genie_forecast_observations`.
+- Add `workspace.forecast_rca_lab.vw_genie_forecast_observations`. When the
+  commercial demo is enabled, also add only the six views printed by
+  `04_commercial_genie_setup.py`; never add their raw fact tables.
 - Paste the complete `genie/SPACE_INSTRUCTIONS.md` into Space instructions.
 - Use the smallest approved Serverless SQL warehouse with auto-stop.
 - Grant business users `Can use`, not edit, unless they are approved builders.
 - Validate with the exact questions and results in
-  `genie/benchmark_questions.json` before sharing broadly.
+  `genie/benchmark_questions.json` and, when enabled,
+  `genie/commercial_benchmark_questions.json` before sharing broadly.
 
 ## Completion report template
 

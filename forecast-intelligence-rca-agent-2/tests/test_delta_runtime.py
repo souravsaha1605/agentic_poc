@@ -334,3 +334,37 @@ class DeltaRuntimeTests(unittest.TestCase):
         ).first()["price"]
         self.assertEqual(preserved_after_recovery, 10.25)
         self.assertEqual(budget.used, 2)
+
+    def test_commercial_demo_rerun_is_idempotent_and_views_are_separate(self):
+        from commercial_lab import publish_commercial_lab
+        from genie_semantic import publish_commercial_genie_views
+
+        db = "spark_catalog.forecast_commercial_lab"
+        first = publish_commercial_lab(self.spark, db)
+        views = publish_commercial_genie_views(self.spark, db)
+        expected_counts = {
+            "dim_sku": 3,
+            "dim_customer": 3,
+            "fact_sku_forecast": 78,
+            "fact_customer_forecast": 130,
+            "fact_sku_budget": 18,
+            "fact_sku_price": 18,
+            "fact_sku_promotion": 2,
+        }
+        self.assertEqual(
+            {name: values["total_rows"] for name, values in first["tables"].items()},
+            expected_counts,
+        )
+        second = publish_commercial_lab(self.spark, db)
+        self.assertEqual(
+            {name: values["generated_rows"] for name, values in second["tables"].items()},
+            {name: 0 for name in expected_counts},
+        )
+        self.assertEqual(first["source_version"], second["source_version"])
+        self.assertEqual(self.spark.table(db + ".rca_commercial_manifest").count(), 1)
+        for view in views:
+            self.assertTrue(self.spark.catalog.tableExists(view))
+            self.assertGreater(self.spark.table(view).count(), 0)
+        self.assertNotIn(
+            "customer_id", self.spark.table(db + ".vw_genie_sku_budget").columns
+        )

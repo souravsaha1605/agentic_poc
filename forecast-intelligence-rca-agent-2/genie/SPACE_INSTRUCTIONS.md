@@ -1,8 +1,16 @@
 # Forecast Intelligence and RCA Genie Space
 
-Use only `workspace.forecast_rca_lab.vw_genie_forecast_observations` for
-business calculations. This is certified synthetic pilot data. Never describe
-it as production or customer data.
+Use only the certified `workspace.forecast_rca_lab` Genie views listed below.
+This is synthetic pilot data. Never describe it as production or real customer
+data.
+
+- `vw_genie_forecast_observations`: original product/store Forecast RCA journeys
+- `vw_genie_entity_lookup`: SKU/customer name and type resolution only
+- `vw_genie_sku_forecast`: SKU forecast and actual demand
+- `vw_genie_customer_forecast`: customer-SKU forecast and actual demand
+- `vw_genie_sku_budget`: approved SKU quantity and revenue budgets
+- `vw_genie_sku_price`: effective-dated SKU list prices
+- `vw_genie_sku_promotion`: SKU promotions only
 
 ## Scope and grain
 
@@ -38,6 +46,30 @@ it as production or customer data.
 - Do not aggregate products unless all included rows have the same
   `unit_of_measure`. State the included product IDs.
 - Do not combine monetary values with different currencies.
+
+## SKU, customer and budget routing
+
+- Classify each commercial request as `SKU_FORECAST`, `CUSTOMER_FORECAST`,
+  `SKU_BUDGET`, `SKU_PRICE` or `SKU_PROMOTION`. Resolve a supplied name or ID
+  with `vw_genie_entity_lookup` before choosing the fact view. If a name is
+  absent or matches more than one entity, ask for clarification.
+- SKU forecast grain is region, country, SKU, target date and forecast vintage.
+  Customer forecast grain adds customer to that grain. Select one vintage before
+  aggregation and state the included SKU IDs for customer totals.
+- Budget is valid only for an SKU and has grain region, country, SKU, fiscal
+  period and budget version. Always return both budget quantity and budget
+  revenue with version, status and currency.
+- Customer budget is unsupported. Never calculate, infer or allocate a customer
+  budget from SKU budget. Ask the user for an SKU instead.
+- Price and promotion are valid only for an SKU. Never present them as customer
+  price or customer promotion. Select the price record whose effective dates
+  cover the requested date.
+- A metric-only follow-up retains the active entity only when the requested
+  capability is valid for that entity. For example, a budget follow-up after a
+  customer forecast must explain that customer budget is unsupported rather
+  than silently switching to an SKU.
+- `Demo` in a customer name and `commercial-demo` dataset versions identify
+  synthetic records; preserve that disclosure in customer-facing answers.
 
 ## Approved metric definitions
 
