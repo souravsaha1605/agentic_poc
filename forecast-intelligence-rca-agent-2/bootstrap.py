@@ -289,9 +289,13 @@ def initialize(spark, database="workspace.forecast_rca_lab", _after_source_write
 
     # Only now is it safe to create or append. Matching grains are untouched.
     if not existed:
-        _frame(spark, staged_rows).write.format("delta").mode(
-            "errorifexists"
-        ).saveAsTable(fact)
+        # Serverless runtimes reject the Spark ``errorifexists`` write mode.
+        # Initialization is a single-writer job and has already confirmed that
+        # this table is absent, so append safely creates it on every supported
+        # Delta runtime without overwriting an existing table.
+        _frame(spark, staged_rows).write.format("delta").mode("append").saveAsTable(
+            fact
+        )
     elif additions:
         _append_frame(spark, additions, spark.table(fact).schema).write.format(
             "delta"
@@ -301,9 +305,9 @@ def initialize(spark, database="workspace.forecast_rca_lab", _after_source_write
     if _after_source_write:
         _after_source_write()
     if not spark.catalog.tableExists(fixtures):
-        _frame(spark, generated).write.format("delta").mode(
-            "errorifexists"
-        ).saveAsTable(fixtures)
+        _frame(spark, generated).write.format("delta").mode("append").saveAsTable(
+            fixtures
+        )
 
     # Re-read the committed source so its fingerprint matches served data types.
     rows = [normalize(r.asDict()) for r in spark.table(fact).collect()]
@@ -311,7 +315,7 @@ def initialize(spark, database="workspace.forecast_rca_lab", _after_source_write
     product_table = f"{database}.dim_product"
     if not spark.catalog.tableExists(product_table):
         spark.createDataFrame(actual_products).write.format("delta").mode(
-            "errorifexists"
+            "append"
         ).saveAsTable(product_table)
     else:
         from delta.tables import DeltaTable
@@ -395,7 +399,7 @@ def initialize(spark, database="workspace.forecast_rca_lab", _after_source_write
     registry_frame = spark.createDataFrame(registry)
     registry_table = f"{database}.rca_readiness_registry"
     if not spark.catalog.tableExists(registry_table):
-        registry_frame.write.format("delta").mode("errorifexists").saveAsTable(
+        registry_frame.write.format("delta").mode("append").saveAsTable(
             registry_table
         )
     else:
@@ -420,7 +424,7 @@ def initialize(spark, database="workspace.forecast_rca_lab", _after_source_write
     manifest_table = f"{database}.rca_source_manifest"
     frame = spark.createDataFrame(manifest)
     if not spark.catalog.tableExists(manifest_table):
-        frame.write.format("delta").mode("errorifexists").saveAsTable(manifest_table)
+        frame.write.format("delta").mode("append").saveAsTable(manifest_table)
     else:
         from delta.tables import DeltaTable
 

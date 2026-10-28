@@ -108,6 +108,10 @@ class GenieSpaceAssetTests(unittest.TestCase):
         self.assertIn("create_app(Admission", host)
         self.assertIn("TEAMS_ENABLED", teams)
 
+    def test_initializer_avoids_unsupported_serverless_write_mode(self):
+        initializer = (ROOT / "bootstrap.py").read_text().lower()
+        self.assertNotIn('mode("errorifexists")', initializer)
+
 
 if __name__ == "__main__":
     unittest.main()
