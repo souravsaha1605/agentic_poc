@@ -252,6 +252,9 @@ class CommercialLabTests(unittest.TestCase):
         for phrase in (
             "SKU_FORECAST",
             "CUSTOMER_FORECAST",
+            "Route `SKU-*` and `CUST-*` IDs",
+            "Use `vw_genie_entity_lookup` only",
+            "Do not combine the original product/store source family",
             "Customer budget, price and promotion are unsupported",
             "State included product/SKU IDs",
             "synthetic disclosure",

@@ -77,6 +77,9 @@ class GenieSpaceAssetTests(unittest.TestCase):
         raw = (ROOT / "genie" / "SPACE_INSTRUCTIONS.md").read_text()
         instructions = " ".join(raw.split())
         for rule in (
+            "Route `P####` product IDs",
+            "revenue, inventory and the original product RCA evidence",
+            "ask which product/store or SKU/customer scope is meant",
             "only from earlier messages in the current conversation",
             "A new conversation has no inherited context",
             "Explicitly supplied new entities or periods replace",

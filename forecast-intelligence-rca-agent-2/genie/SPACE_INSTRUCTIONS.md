@@ -5,10 +5,16 @@ synthetic pilot data; never describe it as production or real customer data.
 
 ## Source routing
 
-- Use `vw_genie_forecast_observations` for original product/store forecast,
-  revenue, inventory and RCA questions.
-- Use `vw_genie_entity_lookup` to resolve SKU/customer names and types. Ask for
-  clarification when a name is missing or has multiple matches.
+- Route `P####` product IDs, store-level analysis, revenue, inventory and the
+  original product RCA evidence to `vw_genie_forecast_observations`.
+- Route `SKU-*` and `CUST-*` IDs, named customers, SKU budgets, prices and
+  promotions to the commercial views. Use `vw_genie_entity_lookup` only to
+  resolve commercial SKU/customer names and types.
+- Do not combine the original product/store source family with commercial
+  SKU/customer views in one query. If the active context and identifier do not
+  identify one family, ask which product/store or SKU/customer scope is meant.
+- Ask for clarification when a commercial name is missing or has multiple
+  matches.
 - Classify detailed commercial requests as `SKU_FORECAST`, `CUSTOMER_FORECAST`,
   `SKU_BUDGET`, `SKU_PRICE` or `SKU_PROMOTION`, then use the matching certified
   SKU or customer view.
