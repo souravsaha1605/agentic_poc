@@ -74,28 +74,27 @@ class GenieSpaceAssetTests(unittest.TestCase):
         self.assertEqual(expected["inventory_balance_each"], latest["inventory_level"])
 
     def test_space_instructions_preserve_critical_business_rules(self):
-        instructions = " ".join(
-            (ROOT / "genie" / "SPACE_INSTRUCTIONS.md").read_text().split()
-        )
+        raw = (ROOT / "genie" / "SPACE_INSTRUCTIONS.md").read_text()
+        instructions = " ".join(raw.split())
         for rule in (
             "only from earlier messages in the current conversation",
-            "A newly created conversation has no active entity or period",
-            "Never infer them from another conversation",
-            "replace the corresponding prior context",
-            "Classify continuation automatically",
-            "explicitly named different product",
-            "change of metric or capability alone",
-            "Do not sum vintages",
-            "Never sum inventory balances across dates",
-            "four consecutive completed weekly periods",
-            "evidence, not proven causes",
-            "Never convert missing values to zero",
-            "use a compact Markdown table",
+            "A new conversation has no inherited context",
+            "Explicitly supplied new entities or periods replace",
+            "Automatically treat pronouns",
+            "never choose an entity from examples",
+            "do not sum forecast vintages",
+            "never sum inventory across dates",
+            "four consecutive completed weeks",
+            "associated evidence, not proven causes",
+            "never replace missing values with zero",
+            "Use a compact Markdown table",
             "primary minus comparison",
             "Evidence and limitations",
-            "Do not return a raw one-row database record",
+            "Do not return raw JSON",
         ):
             self.assertIn(rule, instructions)
+        self.assertEqual(instructions.count("do not sum forecast vintages"), 1)
+        self.assertEqual(instructions.count("only within one `unit_of_measure`"), 1)
 
     def test_semantic_view_uses_one_source_and_does_not_change_teams(self):
         class FakeSpark:

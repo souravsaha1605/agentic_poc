@@ -247,20 +247,24 @@ class CommercialLabTests(unittest.TestCase):
         )
 
     def test_genie_instructions_define_entity_routing(self):
-        instructions = " ".join(
-            (ROOT / "genie" / "SPACE_INSTRUCTIONS.md").read_text().split()
-        )
+        raw = (ROOT / "genie" / "SPACE_INSTRUCTIONS.md").read_text()
+        instructions = " ".join(raw.split())
         for phrase in (
             "SKU_FORECAST",
             "CUSTOMER_FORECAST",
-            "Customer budget is unsupported",
-            "Price and promotion are valid only for an SKU",
-            "state the included SKU IDs",
-            "synthetic records",
-            "Do not join the underlying",
+            "Customer budget, price and promotion are unsupported",
+            "State included product/SKU IDs",
+            "synthetic disclosure",
+            "never underlying `fact_*` or `dim_*`",
             "Never use `SELECT DISTINCT`",
+            "Use those published fields directly",
+            "do not recalculate, average or redefine certified percentages",
         ):
             self.assertIn(phrase, instructions)
+        self.assertNotIn("SUM(units_sold)", raw)
+        self.assertNotIn("SUM(demand_forecast)", raw)
+        self.assertNotIn("SUM(units_sold * price)", raw)
+        self.assertLess(len(raw), 6000)
 
 
 if __name__ == "__main__":
