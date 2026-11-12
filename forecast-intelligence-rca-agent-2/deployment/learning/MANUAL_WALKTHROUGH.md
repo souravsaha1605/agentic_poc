@@ -56,6 +56,28 @@ az account show --query '{name:name,id:id,tenant:tenantId,state:state}' -o table
 
 **Checkpoint:** the output shows the selected subscription and an enabled state. Do not run commands against a different default subscription.
 
+### Recover after a Cloud Shell disconnect
+
+A new Cloud Shell session may reopen in a different or non-persistent home filesystem. Shell variables also disappear. A missing clone does not affect GitHub or Azure resources; it only means the session cannot find its local working copy.
+
+First inspect the current directory and search the home filesystem:
+
+```bash
+pwd
+find "$HOME" -maxdepth 4 -type d -name 'agentic_poc-azure-learning' 2>/dev/null
+```
+
+If the command prints a directory, `cd` to that exact path. If it prints nothing, clone the published feature branch again:
+
+```bash
+cd "$HOME"
+git clone --branch feat/forecast-azure-learning --single-branch https://github.com/souravsaha1605/agentic_poc.git agentic_poc-azure-learning
+cd "$HOME/agentic_poc-azure-learning/forecast-intelligence-rca-agent-2"
+git rev-parse --short HEAD
+```
+
+Then re-export all deployment variables before subsequent Azure commands. Re-cloning is safe because the source of truth is the remote branch. Do not clone over an existing directory or assume environment variables survived the disconnect.
+
 ## 4. Obtain the reviewed source through Git — 5 minutes
 
 Use the feature branch in your authenticated Azure Cloud Shell session:

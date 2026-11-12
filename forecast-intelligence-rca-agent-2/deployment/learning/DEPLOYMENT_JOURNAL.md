@@ -163,6 +163,10 @@ The checks do not reserve either name. Another Azure customer could claim a name
 
 Before provisioning the paid B1 plan, verify the exact Web redirect URI is present on the existing app registration. Then create the dedicated resource group and run `az deployment group validate`. A resource group is the lifecycle and access boundary for this exercise; it has no provisioned compute charge by itself. ARM validation evaluates the template against the selected subscription, region, resource providers, policy and the operator's permissions. Validation success still does not create the application or prove runtime behavior; deployment `what-if` follows next.
 
+## Cloud Shell session recovery
+
+After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.
+
 ### GitHub push confirmed
 
 `git push -u origin feat/forecast-azure-learning` succeeded and created the remote branch in souravsaha1605/agentic_poc. The implementation commit is `e92ce7c`. A following documentation commit records this confirmed result. Clone the feature branch in Cloud Shell and record its current full HEAD before deploying. GitHub push success does not supply Azure management authentication or deploy any resources.
