@@ -209,6 +209,12 @@ Next read-only diagnostics:
 
 Runtime log streaming follows only if the deployment log shows that source extraction/build/startup began. A single fresh retry is reasonable only after the evidence indicates a transient Kudu 502 or after a concrete configuration correction.
 
+### Initial Kudu log evidence
+
+The latest deployment log identified deployment `adb217e3-1d38-4803-ae27-4dd9293ccec0`. It recorded submodule update, deployment preparation, output path `/home/site/wwwroot`, extraction path `/tmp/zipdeploy/extracted`, and finally `Running oryx build...`. This proves the ZIP reached Kudu, was extracted, and build automation began. Therefore the earlier CLI warning that Linux builds are disabled by default is not the observed failure cause.
+
+The supplied log stopped at Oryx build start and contained no success/failure completion record. The client-side 502 may have interrupted status reporting while the server-side operation continued. Before any retry, query the deployment list/current status, re-read the same deployment ID after it has settled, and probe the public `/health` endpoint. If `/health` returns the expected JSON and the deployment status is successful, the CLI 502 was a client/control-plane reporting failure rather than a failed release.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.

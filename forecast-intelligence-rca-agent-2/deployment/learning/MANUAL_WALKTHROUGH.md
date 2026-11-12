@@ -227,6 +227,8 @@ az webapp log deployment show --resource-group "$LEARNING_RG" --name "$FORECAST_
 
 Do not run an unfiltered app-settings listing because it can reveal the Entra client secret. If the Kudu log contains no build/extraction record and the app is Running, the 502 may be transient; make one controlled retry and compare deployment IDs/times. If it identifies a build, package, quota or platform error, correct that prerequisite first. Use runtime log tail only after deployment reaches application startup.
 
+For the first attempt in this lab, Kudu recorded ZIP extraction and `Running oryx build...` under deployment ID `adb217e3-1d38-4803-ae27-4dd9293ccec0`, but the log supplied no terminal result. Re-query that exact deployment after it settles and probe `/health` before deciding to retry. A client-side HTTP 502 does not prove that the asynchronous server-side build stopped.
+
 ### What-if result recorded for this deployment
 
 Azure predicted 11 creates and no modifications or deletions. The expected B1 plan, web app, identity, private keyless Storage account/state container, Blob data role, required single-tenant authentication, Log Analytics workspace and diagnostics were present. No Teams/Bot, model, Databricks, Search, Key Vault, Cosmos or queue resources were predicted. This is the approval boundary before billable infrastructure creation; the B1 plan starts charging once created.
