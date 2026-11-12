@@ -243,6 +243,12 @@ After rebuilding the ZIP from commit `d68edeb`, checking the archive, restarting
 
 No further unchanged ZipDeploy retries are authorized by the diagnostic plan. The repeated result after a healthy app state, correct runtime/startup configuration, enabled remote build and restart indicates a problem within or in front of the Kudu/Oryx deployment path. Preserve the new deployment ID/list entry and inspect its nested Oryx details through Deployment Center. Depending on that evidence, the next reviewed approach is either a prebuilt Linux-compatible artifact with remote build disabled or an alternate artifact delivery mechanism. Application acceptance remains failed/unrun.
 
+### Deployment list corrected the restart diagnosis
+
+The full deployment list later showed that the first deployment `adb217e3-1d38-4803-ae27-4dd9293ccec0` reached terminal status 3 at `2026-11-12T20:19:28Z` with the explicit message: deployment stopped because the SCM container restarted during a management operation. The temporary record ended for the same reason. Therefore the restart recommended during recovery terminated the unresolved first server-side build. Treating that restart as harmless recovery was incorrect sequencing; the journal preserves this correction.
+
+The controlled retry created a distinct deployment `4bcb8963-839d-41b4-b7cb-8c923925f28a`, tag `forecast-rca-d68edeb`, received `2026-11-12T20:30:28Z`. At the supplied observation it remained incomplete at `Running oryx build...` with no end time. Do not perform any management operation, restart or additional deployment while this record may still be running. Poll this exact ID after a reasonable build window and inspect its nested log. Only a terminal result or an elapsed period far beyond the dependency-build window justifies the next intervention.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.

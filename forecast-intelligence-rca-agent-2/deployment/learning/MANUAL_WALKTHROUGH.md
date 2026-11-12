@@ -239,6 +239,8 @@ For this lab, the app subsequently reported Running/Normal/enabled and the live 
 
 The controlled retry did fail with the same Kudu HTTP 502 after warmup. Stop ZipDeploy retries. Capture the new deployment ID and open App Service **Deployment Center -> Logs -> latest deployment -> Show Logs** to inspect the nested Oryx result. Do not disable TLS, authentication or integrity checks. If Oryx itself is the repeated failure, build Linux-compatible dependencies into `.python_packages/lib/site-packages` in Cloud Shell, verify the artifact, disable remote build for that release, and make only a separately reviewed prebuilt deployment attempt.
 
+The complete deployment list subsequently proved the first build was terminated by the instructed App Service restart: Azure explicitly reported an SCM container restart during a management operation. Do not restart a site while Kudu still has an unresolved server-side deployment, even when the CLI returned HTTP 502. The second deployment has its own ID and must be allowed to reach a terminal state before another management operation. Poll status and nested logs first; a client-side 502 is not a cancellation signal.
+
 ### What-if result recorded for this deployment
 
 Azure predicted 11 creates and no modifications or deletions. The expected B1 plan, web app, identity, private keyless Storage account/state container, Blob data role, required single-tenant authentication, Log Analytics workspace and diagnostics were present. No Teams/Bot, model, Databricks, Search, Key Vault, Cosmos or queue resources were predicted. This is the approval boundary before billable infrastructure creation; the B1 plan starts charging once created.
