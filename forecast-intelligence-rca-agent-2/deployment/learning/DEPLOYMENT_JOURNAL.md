@@ -167,6 +167,8 @@ Before provisioning the paid B1 plan, verify the exact Web redirect URI is prese
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.
 
+The playbook now explicitly separates the temporary Cloud Shell checkout from the production code lifecycle. GitHub is the canonical source; a tested immutable ZIP or container is the deployable artifact; App Service holds the runtime copy; Blob Storage holds durable application state. Re-cloning is not part of normal application runtime behavior. A production CI/CD identity would perform packaging and deployment without relying on a developer's Cloud Shell filesystem.
+
 ### GitHub push confirmed
 
 `git push -u origin feat/forecast-azure-learning` succeeded and created the remote branch in souravsaha1605/agentic_poc. The implementation commit is `e92ce7c`. A following documentation commit records this confirmed result. Clone the feature branch in Cloud Shell and record its current full HEAD before deploying. GitHub push success does not supply Azure management authentication or deploy any resources.

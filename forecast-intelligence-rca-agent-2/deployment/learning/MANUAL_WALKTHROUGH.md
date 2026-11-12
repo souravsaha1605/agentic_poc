@@ -78,6 +78,25 @@ git rev-parse --short HEAD
 
 Then re-export all deployment variables before subsequent Azure commands. Re-cloning is safe because the source of truth is the remote branch. Do not clone over an existing directory or assume environment variables survived the disconnect.
 
+### Where code resides in a production workflow
+
+Cloud Shell is an administrative workstation, not the production runtime or the canonical source store. Re-cloning after a disconnect is needed only when that workstation has no persistent Cloud Drive or opens with a fresh filesystem.
+
+The expected lifecycle is:
+
+```text
+GitHub repository and reviewed commit
+    -> CI validates/tests once
+    -> CI creates an immutable ZIP or container artifact
+    -> artifact is stored with a version/digest
+    -> deployment identity releases that exact artifact to App Service
+    -> App Service runs its deployed copy; Blob Storage holds runtime state
+```
+
+For this manual learning deployment, Cloud Shell temporarily performs the packaging and deployment steps that CI would normally perform. The canonical code remains on the GitHub feature branch. The package builder creates `/tmp/forecast-learning.zip`, and `az webapp deploy` transfers it to App Service. App Service extracts or mounts the deployed content under its managed application filesystem (commonly `/home/site/wwwroot` for Linux App Service); developers should not edit that runtime copy manually. Durable investigations live in Blob Storage and therefore do not belong inside the source checkout or deployment package.
+
+For a mature production pipeline, GitHub Actions should authenticate to Azure with workload identity federation/OIDC, build a versioned artifact from an approved commit, run tests and security checks, deploy the same artifact across environments, and retain release metadata for rollback. A containerized variant would store the immutable image in Azure Container Registry and configure App Service or Container Apps to run a pinned image digest.
+
 ## 4. Obtain the reviewed source through Git — 5 minutes
 
 Use the feature branch in your authenticated Azure Cloud Shell session:
