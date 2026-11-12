@@ -231,6 +231,12 @@ The timeout alone does not identify the root cause. Candidate layers include an 
 
 Before mutation, verify the app is Running and the live `SCM_DO_BUILD_DURING_DEPLOYMENT` value is `true`. If both are correct, the supported recovery is one App Service restart followed by one controlled ZipDeploy retry using the same tested package. Compare the new deployment ID and terminal status. If it hangs again, stop retrying and switch to detailed Kudu/Oryx diagnostics or a prebuilt artifact strategy.
 
+### Recovery prerequisites verified
+
+The live web app reported `state: Running`, `availabilityState: Normal`, and `enabled: true`. A filtered app-settings query returned `SCM_DO_BUILD_DURING_DEPLOYMENT=true`. These results establish that the App Service resource is healthy at the control plane and remote build is enabled. They support one controlled recovery attempt: rebuild the immutable ZIP from the current Git revision, restart the app/Kudu context, deploy with target cleanup, a unique deployment tag, post-deployment restart/status tracking and a bounded 15-minute CLI timeout. Cleanup affects only the failed runtime content under the application deployment target; durable state is in Blob and source is recoverable from Git.
+
+If the retry fails or remains incomplete, do not loop. Preserve its deployment ID and logs, then use detailed Oryx evidence or switch to a prebuilt `.python_packages`/container artifact after review.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.

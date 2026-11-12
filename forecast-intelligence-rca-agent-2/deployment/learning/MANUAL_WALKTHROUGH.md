@@ -235,6 +235,8 @@ The live configuration check subsequently confirmed Always On, `PYTHON|3.12`, an
 
 The deployment list later confirmed the OneDeploy/Oryx record was inactive but incomplete and remained at `Running oryx build...` far beyond a reasonable build duration; the temporary receiving record was also incomplete. Treat this as a stuck/abandoned Kudu deployment. Verify the app state and filtered build setting, restart the App Service once, and retry the same package once. A second hang is evidence to stop retries and use detailed build diagnostics or a prebuilt artifact.
 
+For this lab, the app subsequently reported Running/Normal/enabled and the live remote-build setting was `true`. The controlled retry rebuilds from the current commit, restarts the app, cleans only the failed deployment target, labels the new deployment with its Git revision, tracks startup and uses a 15-minute timeout. Durable case state is in Blob, so target cleanup does not delete investigation state. Do not repeat the retry if it fails.
+
 ### What-if result recorded for this deployment
 
 Azure predicted 11 creates and no modifications or deletions. The expected B1 plan, web app, identity, private keyless Storage account/state container, Blob data role, required single-tenant authentication, Log Analytics workspace and diagnostics were present. No Teams/Bot, model, Databricks, Search, Key Vault, Cosmos or queue resources were predicted. This is the approval boundary before billable infrastructure creation; the B1 plan starts charging once created.
