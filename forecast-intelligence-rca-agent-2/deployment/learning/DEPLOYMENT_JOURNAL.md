@@ -183,6 +183,18 @@ No Bot/Teams, OpenAI/model, Databricks, Search, Key Vault, Cosmos DB, queue, or 
 
 **Review decision:** the predicted changes are consistent with the authorized learning architecture. The next mutation is the actual ARM group deployment. After infrastructure succeeds, configure the App Service authentication secret securely, build/deploy the source ZIP, and run live acceptance checks.
 
+## Infrastructure deployment succeeded
+
+The user reported that `az deployment group create --name forecast-web-infra` completed with provisioning state `Succeeded`. This establishes that Azure accepted and provisioned the reviewed infrastructure in `rg-forecast-learning`. The B1 App Service plan is now a running billable resource even if the web application has not yet received its source package.
+
+This success does not by itself prove that all data-plane operations or application paths work. The next gates are:
+
+1. Create a short-lived Entra client secret and place its **value** only in the App Service setting named `MICROSOFT_PROVIDER_AUTHENTICATION_SECRET` through the Portal's secure editor. Never put it in Git, chat, screenshots, shell history or the deployment package.
+2. Build the deployment ZIP from the recorded Git commit and deploy it to App Service.
+3. Verify public liveness, required sign-in, role authorization, managed-identity Blob writes, request replay, restart persistence and actual log delivery.
+
+The reported success has not yet been supplemented with a resource inventory or runtime acceptance evidence. Those remain pending rather than inferred from ARM provisioning.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.

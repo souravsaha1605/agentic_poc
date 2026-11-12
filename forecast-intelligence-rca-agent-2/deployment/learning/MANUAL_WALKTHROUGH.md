@@ -215,6 +215,10 @@ Azure's deployment build installs the package requirements. The package contains
 
 Azure predicted 11 creates and no modifications or deletions. The expected B1 plan, web app, identity, private keyless Storage account/state container, Blob data role, required single-tenant authentication, Log Analytics workspace and diagnostics were present. No Teams/Bot, model, Databricks, Search, Key Vault, Cosmos or queue resources were predicted. This is the approval boundary before billable infrastructure creation; the B1 plan starts charging once created.
 
+### Infrastructure result recorded for this deployment
+
+The actual group deployment `forecast-web-infra` was reported as `Succeeded`. Infrastructure creation and application release are separate stages: the web plan, app, identity, Storage and monitoring resources now exist, but the Python package and authentication secret still need to be released/configured and tested. Treat ARM success as infrastructure evidence, not application acceptance.
+
 ## 9. Finish secure sign-in settings — 5–10 minutes
 
 1. Portal → **App Services → your app → Environment variables/App settings**.
