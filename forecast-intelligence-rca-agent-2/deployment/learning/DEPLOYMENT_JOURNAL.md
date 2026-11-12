@@ -195,6 +195,20 @@ This success does not by itself prove that all data-plane operations or applicat
 
 The reported success has not yet been supplemented with a resource inventory or runtime acceptance evidence. Those remain pending rather than inferred from ARM provisioning.
 
+## First source deployment failed at Kudu
+
+The first `az webapp deploy --type zip` attempt reached and warmed the Kudu deployment service, then failed when the deployment API returned HTTP 502. Azure reported runtime `PYTHON|3.12`, region Central India, plan B1, stage Unknown, and last step "HTTP request sent to deployment API." No successful source release or application acceptance is claimed.
+
+The CLI also displayed a generic warning that Linux build automation is off by default. The reviewed ARM template already sets `SCM_DO_BUILD_DURING_DEPLOYMENT=true`; this must be verified on the live app through a filtered, non-secret app-setting query. The warning alone is not treated as the root cause. HTTP 502 can represent a transient Kudu/control-plane problem or a service-side failure; retrying unchanged before reading the latest deployment log would lose diagnostic discipline.
+
+Next read-only diagnostics:
+
+1. Query web-app state and availability.
+2. Query only the non-secret `SCM_DO_BUILD_DURING_DEPLOYMENT` setting; never list all settings because the authentication secret is present.
+3. Read the latest Kudu deployment log through `az webapp log deployment show`.
+
+Runtime log streaming follows only if the deployment log shows that source extraction/build/startup began. A single fresh retry is reasonable only after the evidence indicates a transient Kudu 502 or after a concrete configuration correction.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.

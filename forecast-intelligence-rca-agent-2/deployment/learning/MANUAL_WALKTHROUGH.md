@@ -211,6 +211,22 @@ az webapp deploy --resource-group "$LEARNING_RG" --name "$FORECAST_APP" --src-pa
 
 Azure's deployment build installs the package requirements. The package contains source and HTML, not local state or secrets. If a deployment partially fails, inspect actual resources and deployment operations before retrying. Resource creation alone does not prove the Python application started.
 
+### Diagnosing an HTTP 502 from ZipDeploy
+
+If Kudu warms successfully but `az webapp deploy` returns HTTP 502 at the deployment API, do not assume the generic build-automation warning is the cause. This template already declares `SCM_DO_BUILD_DURING_DEPLOYMENT=true`. Verify the live value with a filtered query so the authentication secret is not printed, inspect the latest deployment log, and check web-app state before retrying:
+
+```bash
+az webapp show --resource-group "$LEARNING_RG" --name "$FORECAST_APP" \
+  --query '{state:state,availabilityState:availabilityState,host:defaultHostName}' --output json
+
+az webapp config appsettings list --resource-group "$LEARNING_RG" --name "$FORECAST_APP" \
+  --query "[?name=='SCM_DO_BUILD_DURING_DEPLOYMENT'].{name:name,value:value}" --output json
+
+az webapp log deployment show --resource-group "$LEARNING_RG" --name "$FORECAST_APP" --output json
+```
+
+Do not run an unfiltered app-settings listing because it can reveal the Entra client secret. If the Kudu log contains no build/extraction record and the app is Running, the 502 may be transient; make one controlled retry and compare deployment IDs/times. If it identifies a build, package, quota or platform error, correct that prerequisite first. Use runtime log tail only after deployment reaches application startup.
+
 ### What-if result recorded for this deployment
 
 Azure predicted 11 creates and no modifications or deletions. The expected B1 plan, web app, identity, private keyless Storage account/state container, Blob data role, required single-tenant authentication, Log Analytics workspace and diagnostics were present. No Teams/Bot, model, Databricks, Search, Key Vault, Cosmos or queue resources were predicted. This is the approval boundary before billable infrastructure creation; the B1 plan starts charging once created.
