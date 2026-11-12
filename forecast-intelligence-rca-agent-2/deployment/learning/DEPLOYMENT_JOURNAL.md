@@ -130,3 +130,7 @@ Next manual batch: upload/extract the updated source archive, query B1 Linux reg
 ## Git-based delivery preparation
 
 The user explicitly authorized creating and pushing a feature branch. Created local branch `feat/forecast-azure-learning` from the existing checkout without resetting or replacing user work. Re-ran the forecast suite: 110 tests, 95 passed and 15 optional skips; academy suite: 51 passed. Updated source-transfer instructions to clone this branch and record the deployed commit SHA. Source archive upload is now an optional fallback. Push outcome is verified separately by checking the remote ref; branch creation alone does not prove remote access or deployment.
+
+### GitHub push confirmed
+
+`git push -u origin feat/forecast-azure-learning` succeeded and created the remote branch in souravsaha1605/agentic_poc. The implementation commit is `e92ce7c`. A following documentation commit records this confirmed result. Clone the feature branch in Cloud Shell and record its current full HEAD before deploying. GitHub push success does not supply Azure management authentication or deploy any resources.
