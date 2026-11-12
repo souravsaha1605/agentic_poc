@@ -229,6 +229,8 @@ Do not run an unfiltered app-settings listing because it can reveal the Entra cl
 
 For the first attempt in this lab, Kudu recorded ZIP extraction and `Running oryx build...` under deployment ID `adb217e3-1d38-4803-ae27-4dd9293ccec0`, but the log supplied no terminal result. Re-query that exact deployment after it settles and probe `/health` before deciding to retry. A client-side HTTP 502 does not prove that the asynchronous server-side build stopped.
 
+The first subsequent `/health` request timed out after 30 seconds with zero bytes. This is a failed liveness check, not proof of a specific cause. Correlate it with deployment-list status, `az webapp show`, filtered runtime configuration and a bounded startup log tail. Since `/health` bypasses platform authentication, do not respond by weakening authentication controls.
+
 ### What-if result recorded for this deployment
 
 Azure predicted 11 creates and no modifications or deletions. The expected B1 plan, web app, identity, private keyless Storage account/state container, Blob data role, required single-tenant authentication, Log Analytics workspace and diagnostics were present. No Teams/Bot, model, Databricks, Search, Key Vault, Cosmos or queue resources were predicted. This is the approval boundary before billable infrastructure creation; the B1 plan starts charging once created.

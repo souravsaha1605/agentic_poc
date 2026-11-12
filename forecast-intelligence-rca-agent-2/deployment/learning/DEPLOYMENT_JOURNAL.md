@@ -215,6 +215,12 @@ The latest deployment log identified deployment `adb217e3-1d38-4803-ae27-4dd9293
 
 The supplied log stopped at Oryx build start and contained no success/failure completion record. The client-side 502 may have interrupted status reporting while the server-side operation continued. Before any retry, query the deployment list/current status, re-read the same deployment ID after it has settled, and probe the public `/health` endpoint. If `/health` returns the expected JSON and the deployment status is successful, the CLI 502 was a client/control-plane reporting failure rather than a failed release.
 
+### Public liveness probe timed out
+
+A later `curl --include --max-time 30 https://forecast-rca-922ccd.azurewebsites.net/health` returned curl error 28 after 30 seconds with zero response bytes. Therefore the app is not accepted as live and the source release is not considered successful. Because `/health` is excluded from Easy Auth, this result should be correlated with the web-app state, the settled deployment status, configured runtime/startup command and application log stream before changing authentication or retrying the ZIP.
+
+The timeout alone does not identify the root cause. Candidate layers include an unfinished/failed Oryx build, unavailable worker, dependency/startup failure, or request-path connectivity. Read-only state and logs are the next checks. No repeated deployment should be attempted until they distinguish these cases.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.
