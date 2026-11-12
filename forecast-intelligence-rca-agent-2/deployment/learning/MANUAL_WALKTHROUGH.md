@@ -237,6 +237,8 @@ The deployment list later confirmed the OneDeploy/Oryx record was inactive but i
 
 For this lab, the app subsequently reported Running/Normal/enabled and the live remote-build setting was `true`. The controlled retry rebuilds from the current commit, restarts the app, cleans only the failed deployment target, labels the new deployment with its Git revision, tracks startup and uses a 15-minute timeout. Durable case state is in Blob, so target cleanup does not delete investigation state. Do not repeat the retry if it fails.
 
+The controlled retry did fail with the same Kudu HTTP 502 after warmup. Stop ZipDeploy retries. Capture the new deployment ID and open App Service **Deployment Center -> Logs -> latest deployment -> Show Logs** to inspect the nested Oryx result. Do not disable TLS, authentication or integrity checks. If Oryx itself is the repeated failure, build Linux-compatible dependencies into `.python_packages/lib/site-packages` in Cloud Shell, verify the artifact, disable remote build for that release, and make only a separately reviewed prebuilt deployment attempt.
+
 ### What-if result recorded for this deployment
 
 Azure predicted 11 creates and no modifications or deletions. The expected B1 plan, web app, identity, private keyless Storage account/state container, Blob data role, required single-tenant authentication, Log Analytics workspace and diagnostics were present. No Teams/Bot, model, Databricks, Search, Key Vault, Cosmos or queue resources were predicted. This is the approval boundary before billable infrastructure creation; the B1 plan starts charging once created.

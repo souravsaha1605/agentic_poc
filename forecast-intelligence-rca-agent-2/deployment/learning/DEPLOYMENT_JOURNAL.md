@@ -237,6 +237,12 @@ The live web app reported `state: Running`, `availabilityState: Normal`, and `en
 
 If the retry fails or remains incomplete, do not loop. Preserve its deployment ID and logs, then use detailed Oryx evidence or switch to a prebuilt `.python_packages`/container artifact after review.
 
+### Controlled ZipDeploy retry also returned HTTP 502
+
+After rebuilding the ZIP from commit `d68edeb`, checking the archive, restarting the App Service and enabling target cleanup/restart/status tracking with a 15-minute timeout, the single controlled `az webapp deploy` retry again warmed Kudu and then received HTTP 502 at the deployment API. Azure again reported runtime Python 3.12, Central India, B1, stage Unknown and last step "HTTP request sent to deployment API."
+
+No further unchanged ZipDeploy retries are authorized by the diagnostic plan. The repeated result after a healthy app state, correct runtime/startup configuration, enabled remote build and restart indicates a problem within or in front of the Kudu/Oryx deployment path. Preserve the new deployment ID/list entry and inspect its nested Oryx details through Deployment Center. Depending on that evidence, the next reviewed approach is either a prebuilt Linux-compatible artifact with remote build disabled or an alternate artifact delivery mechanism. Application acceptance remains failed/unrun.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.
