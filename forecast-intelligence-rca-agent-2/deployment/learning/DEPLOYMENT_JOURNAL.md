@@ -225,6 +225,12 @@ The timeout alone does not identify the root cause. Candidate layers include an 
 
 `az webapp config show` returned `alwaysOn: true`, runtime `PYTHON|3.12`, and startup command `python -m gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 --access-logfile - deployment.learning.web_api:application`. These values match the reviewed template. A missing runtime or malformed startup setting is therefore not the current configuration problem. This check does not prove the package contains the module, Oryx installed Gunicorn/dependencies, or the worker can import and start the application; settled deployment status and logs remain required.
 
+### Kudu deployment confirmed stuck
+
+`az webapp log deployment list` showed the main OneDeploy record `adb217e3-1d38-4803-ae27-4dd9293ccec0` with `Complete=False`, `Active=False`, status `1`, status text `Building and Deploying`, and progress `Running oryx build...`. Its start time was `2026-11-12T19:58:34.921875Z`. The temporary receiving record `temp-f7b55c0e` was also incomplete at `Fetching changes`. The elapsed time is far beyond a normal build for this small package, and the public liveness probe timed out, so this is classified as a stuck/abandoned deployment rather than an ongoing healthy build.
+
+Before mutation, verify the app is Running and the live `SCM_DO_BUILD_DURING_DEPLOYMENT` value is `true`. If both are correct, the supported recovery is one App Service restart followed by one controlled ZipDeploy retry using the same tested package. Compare the new deployment ID and terminal status. If it hangs again, stop retrying and switch to detailed Kudu/Oryx diagnostics or a prebuilt artifact strategy.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.
