@@ -90,6 +90,15 @@ az provider show --namespace Microsoft.OperationalInsights --query registrationS
 
 Storage names use 3–24 lowercase letters/digits. App names must meet App Service naming rules and be globally unique. A listed Azure region does not guarantee your subscription can provision B1 there; deployment validation and quota evidence are needed.
 
+### Values selected in this learning deployment
+
+- Region candidate: `centralindia`, after B1 Linux appeared in the subscription's App Service location listing.
+- App Service name: `forecast-rca-922ccd`; Azure reported `nameAvailable: true`.
+- Storage account name: `forecastrca922ccd`; Azure reported `nameAvailable: true`.
+- Required Web callback: `https://forecast-rca-922ccd.azurewebsites.net/.auth/login/aad/callback`.
+
+Name checks are read-only and do not reserve names. Configure the callback with the exact app hostname, then let ARM validation and deployment confirm current availability, policy and quota.
+
 If a required provider is not registered and your permissions allow registration, register only that provider with `az provider register --namespace PROVIDER_NAME --wait`. This is a subscription-level change; do not register unrelated services.
 
 ## 6. Create your Entra application — 10–20 minutes
