@@ -163,6 +163,26 @@ The checks do not reserve either name. Another Azure customer could claim a name
 
 Before provisioning the paid B1 plan, verify the exact Web redirect URI is present on the existing app registration. Then create the dedicated resource group and run `az deployment group validate`. A resource group is the lifecycle and access boundary for this exercise; it has no provisioned compute charge by itself. ARM validation evaluates the template against the selected subscription, region, resource providers, policy and the operator's permissions. Validation success still does not create the application or prove runtime behavior; deployment `what-if` follows next.
 
+## Azure what-if reviewed
+
+The user ran the group deployment what-if against `rg-forecast-learning`. Azure predicted **11 creates**, with no modifications or deletions. The generic warning about possible what-if noise was present, but the predicted resource set matched the reviewed template.
+
+| Predicted resource | Relevant reviewed properties | Why it is present |
+|---|---|---|
+| User-assigned identity `forecast-rca-922ccd-identity` | Central India | Keyless workload identity for Blob access |
+| Log Analytics `forecast-rca-922ccd-logs` | PerGB2018, 30-day retention, 0.1 GB/day ingestion cap | Bounded operational log retention; quota is not a total-spend cap |
+| Storage `forecastrca922ccd` | Standard_LRS, HTTPS/TLS 1.2, public Blob disabled, shared key disabled, OAuth default | Private durable application state without account keys |
+| Blob service/container | Versioning enabled, 7-day soft delete, `forecast-rca-state` public access None | Recoverable private state container |
+| Blob data role assignment | Role GUID `ba92f5b4-2d11-453d-a403-e96b0029c9fe` for the managed identity | Storage Blob Data Contributor for the dedicated state account |
+| Linux App Service plan | B1, capacity 1, Central India | Paid application compute baseline |
+| Web app `forecast-rca-922ccd` | Linux, HTTPS-only, client affinity disabled | Hosts the Python API and browser interface |
+| App Service Authentication | Required, unauthenticated action Return401, only `/health` excluded; exact client/tenant/audiences | Single-tenant user-authentication boundary |
+| App logging and diagnostic setting | Console and HTTP logs enabled and routed to the workspace | Runtime troubleshooting and evidence |
+
+No Bot/Teams, OpenAI/model, Databricks, Search, Key Vault, Cosmos DB, queue, or Application Insights resources were predicted. The role is scoped to the dedicated Storage account, which currently contains only the state container; a larger shared account should use a narrower container scope. The B1 plan begins accruing charges after creation, and workspace/storage usage can also incur consumption charges. What-if does not reserve names, prove deployment success, configure the Entra client secret, deploy application source, or validate runtime behavior.
+
+**Review decision:** the predicted changes are consistent with the authorized learning architecture. The next mutation is the actual ARM group deployment. After infrastructure succeeds, configure the App Service authentication secret securely, build/deploy the source ZIP, and run live acceptance checks.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.
