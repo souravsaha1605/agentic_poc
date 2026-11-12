@@ -127,6 +127,23 @@ The user supplied actual `az account show` output. It reports AzureCloud, subscr
 
 Next manual batch: upload/extract the updated source archive, query B1 Linux regions and register the single-tenant forecast app/Forecast.User role. No infrastructure creation has been reported yet.
 
+## Source, region and Entra authorization prepared
+
+These steps establish a reproducible source version and the user identity boundary before infrastructure deployment. The application must know both **who authenticated** and **whether that identity has the Forecast.User role**. Authentication alone does not authorize forecast access.
+
+| Step | Why it is required | Action and observed result | What it proves |
+|---|---|---|---|
+| Git source selection | Tie the deployment to a reviewable source revision | Cloned `feat/forecast-azure-learning`; `git rev-parse --short HEAD` returned `530553c` | Cloud Shell has the expected deployment code |
+| App Service region discovery | Avoid guessing whether the B1 Linux SKU is offered in a region | `az appservice list-locations --sku B1 --linux-workers-enabled` included Central India | B1 Linux is listed in Central India; template validation must still check this subscription's policy/quota |
+| Single-tenant app registration | Restrict sign-in to the subscription's Entra directory | Registered `Forecast RCA learning` in Default Directory | An application identity exists for the browser sign-in boundary |
+| Client and tenant identifiers | Bind App Service Authentication to the exact application and issuer | Client ID `922ccd1b-86d7-4e0a-87e8-9e1b97bdadc9`; tenant ID `a71e922d-d0ad-4933-b2a7-201574b5c151` | The non-secret identity parameters are known for the ARM deployment |
+| App role | Separate successful sign-in from authorization | Created enabled role value `Forecast.User` for Users/Groups | The application can require a specific authorization claim |
+| User assignment | Put the learning user into the allowed role | Individual user assignment succeeded | The assigned user should receive `Forecast.User` after a fresh sign-in once App Service Authentication is configured |
+
+The portal warned that group assignment is unavailable at the current Entra plan level. Individual assignment remains supported and succeeded, which is sufficient for this single-user lab. No directory upgrade is required. Group-based enterprise access remains a documented production consideration.
+
+This does **not** yet prove application sign-in, role-claim delivery, App Service deployment, Blob access or runtime authorization. Those require the redirect URI, App Service authentication configuration and live acceptance tests.
+
 ## Git-based delivery preparation
 
 The user explicitly authorized creating and pushing a feature branch. Created local branch `feat/forecast-azure-learning` from the existing checkout without resetting or replacing user work. Re-ran the forecast suite: 110 tests, 95 passed and 15 optional skips; academy suite: 51 passed. Updated source-transfer instructions to clone this branch and record the deployed commit SHA. Source archive upload is now an optional fallback. Push outcome is verified separately by checking the remote ref; branch creation alone does not prove remote access or deployment.

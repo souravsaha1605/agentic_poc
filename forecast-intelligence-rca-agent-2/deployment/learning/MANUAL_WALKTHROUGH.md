@@ -112,6 +112,17 @@ Do not request Microsoft Graph application permissions just to authenticate user
 
 **Checkpoint:** correct tenant/client ID, exact callback URL, role exists and user is assigned. Creating an Azure subscription does not grant tenant admin or Teams permissions.
 
+### Result recorded in this learning deployment
+
+- App registration: `Forecast RCA learning`, single tenant.
+- Application/client ID: `922ccd1b-86d7-4e0a-87e8-9e1b97bdadc9`.
+- Directory/tenant ID: `a71e922d-d0ad-4933-b2a7-201574b5c151`.
+- App role value: `Forecast.User`, allowed member type Users/Groups.
+- Individual user assignment: succeeded.
+- Group assignment: unavailable under the current Entra plan. This does not block the individual learning deployment and does not require a plan upgrade.
+
+Why this sequence matters: the registration identifies the application, single-tenant selection fixes the trusted issuer, the app role expresses authorization, and the enterprise-application assignment grants that role to a user. The deployed adapter validates the tenant, object identity and role claim rather than treating any authenticated account as authorized.
+
 ## 7. Validate and review infrastructure — 5–15 minutes
 
 Create only the dedicated learning group:
