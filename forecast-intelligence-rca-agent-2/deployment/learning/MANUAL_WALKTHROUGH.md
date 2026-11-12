@@ -231,6 +231,8 @@ For the first attempt in this lab, Kudu recorded ZIP extraction and `Running ory
 
 The first subsequent `/health` request timed out after 30 seconds with zero bytes. This is a failed liveness check, not proof of a specific cause. Correlate it with deployment-list status, `az webapp show`, filtered runtime configuration and a bounded startup log tail. Since `/health` bypasses platform authentication, do not respond by weakening authentication controls.
 
+The live configuration check subsequently confirmed Always On, `PYTHON|3.12`, and the intended two-worker Gunicorn command. Continue diagnosis at package build/import and worker availability rather than changing these correct settings without evidence.
+
 ### What-if result recorded for this deployment
 
 Azure predicted 11 creates and no modifications or deletions. The expected B1 plan, web app, identity, private keyless Storage account/state container, Blob data role, required single-tenant authentication, Log Analytics workspace and diagnostics were present. No Teams/Bot, model, Databricks, Search, Key Vault, Cosmos or queue resources were predicted. This is the approval boundary before billable infrastructure creation; the B1 plan starts charging once created.

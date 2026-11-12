@@ -221,6 +221,10 @@ A later `curl --include --max-time 30 https://forecast-rca-922ccd.azurewebsites.
 
 The timeout alone does not identify the root cause. Candidate layers include an unfinished/failed Oryx build, unavailable worker, dependency/startup failure, or request-path connectivity. Read-only state and logs are the next checks. No repeated deployment should be attempted until they distinguish these cases.
 
+### Live runtime configuration verified
+
+`az webapp config show` returned `alwaysOn: true`, runtime `PYTHON|3.12`, and startup command `python -m gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 --access-logfile - deployment.learning.web_api:application`. These values match the reviewed template. A missing runtime or malformed startup setting is therefore not the current configuration problem. This check does not prove the package contains the module, Oryx installed Gunicorn/dependencies, or the worker can import and start the application; settled deployment status and logs remain required.
+
 ## Cloud Shell session recovery
 
 After a disconnect, the new Cloud Shell opened in the user's home directory and `~/agentic_poc-azure-learning` was absent. Consequently `git pull`, the component `cd`, and `git rev-parse` failed before any Azure operation ran. This is a local Cloud Shell workspace issue, not a source-control, application or Azure deployment failure. Recovery instructions now search the home filesystem first and re-clone `feat/forecast-azure-learning` only when no existing checkout is found. Deployment variables must be exported again because shell variables are process-local.
