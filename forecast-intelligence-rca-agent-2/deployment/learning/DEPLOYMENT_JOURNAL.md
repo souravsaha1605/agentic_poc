@@ -159,6 +159,10 @@ Name availability is checked before configuring the Entra callback because the c
 
 The checks do not reserve either name. Another Azure customer could claim a name before deployment. The exact Entra Web redirect URI can now be configured as `https://forecast-rca-922ccd.azurewebsites.net/.auth/login/aad/callback`. No Azure infrastructure creation has been reported at this point.
 
+## Next controlled checkpoint
+
+Before provisioning the paid B1 plan, verify the exact Web redirect URI is present on the existing app registration. Then create the dedicated resource group and run `az deployment group validate`. A resource group is the lifecycle and access boundary for this exercise; it has no provisioned compute charge by itself. ARM validation evaluates the template against the selected subscription, region, resource providers, policy and the operator's permissions. Validation success still does not create the application or prove runtime behavior; deployment `what-if` follows next.
+
 ### GitHub push confirmed
 
 `git push -u origin feat/forecast-azure-learning` succeeded and created the remote branch in souravsaha1605/agentic_poc. The implementation commit is `e92ce7c`. A following documentation commit records this confirmed result. Clone the feature branch in Cloud Shell and record its current full HEAD before deploying. GitHub push success does not supply Azure management authentication or deploy any resources.

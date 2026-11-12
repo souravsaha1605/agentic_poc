@@ -132,6 +132,19 @@ Do not request Microsoft Graph application permissions just to authenticate user
 
 Why this sequence matters: the registration identifies the application, single-tenant selection fixes the trusted issuer, the app role expresses authorization, and the enterprise-application assignment grants that role to a user. The deployed adapter validates the tenant, object identity and role claim rather than treating any authenticated account as authorized.
 
+### Why user identity and managed identity are separate
+
+The signed-in user and the deployed workload have different jobs and therefore receive different permissions:
+
+```text
+User identity -> signs in and receives Forecast.User -> may use the application
+App Service managed identity -> receives scoped Blob data access -> may persist application state
+```
+
+This removes Storage account keys from source and deployment packages. Azure issues short-lived tokens to the workload and manages their rotation. Removing a user's Forecast.User assignment blocks that person without interrupting storage access for everyone else. Removing the workload's Blob role retires its data access without changing user accounts. If either identity is compromised, it does not automatically receive the permissions of the other identity or the operator who deployed the resources.
+
+In practice, an assigned analyst can open an owned investigation while another authenticated but unassigned employee receives 403. Neither person receives direct Blob credentials. The application uses its managed identity to reach the private state container and still enforces tenant-and-user ownership before returning a case. Azure activity and data-plane logs can distinguish actions performed by the deploying operator, the application workload and the end user.
+
 ## 7. Validate and review infrastructure — 5–15 minutes
 
 Create only the dedicated learning group:
